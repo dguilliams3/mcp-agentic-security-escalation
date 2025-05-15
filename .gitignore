@@ -2,18 +2,47 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+*.pyc
+.coverage
+htmlcov/
+.tox/
 
 # Virtual Environment
 venv/
 .env
+.venv/
+.python-version
 
 # IDE
 .vscode/
 .idea/
+.cursor/
 
 # System Files
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log 
+# Logs and Data
+*.log
+logs/
+temp/
+.cache/
+data/
+
+# Build and Distribution
+dist/
+build/
+*.egg-info/
+
+# Lock files
+*.lock
+
+# Local development
+local_settings.py
+instance/
+
+# Experimental and Archive
+experimental/
+archive/ 
+
