@@ -1,0 +1,119 @@
+"""Decorators for performance monitoring and caching."""
+
+import functools
+import time
+import asyncio
+from typing import Any, Callable, Dict, Optional
+from datetime import datetime
+import logging
+from pathlib import Path
+
+# Ensure logs directory exists
+Path('logs').mkdir(exist_ok=True)
+
+# Set up basic logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(Path('logs/mcp_cve.log')),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+def timing_metric(func: Callable) -> Callable:
+    """Measure and log execution time of functions.
+    
+    Args:
+        func: The function to be wrapped
+        
+    Returns:
+        Wrapped function that logs timing metrics
+    """
+    @functools.wraps(func)
+    async def async_wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        try:
+            result = await func(*args, **kwargs)
+            duration = time.perf_counter() - start
+            logger.info(f"{func.__name__} completed in {duration:.2f}s")
+            return result
+        except Exception as e:
+            duration = time.perf_counter() - start
+            logger.error(f"{func.__name__} failed after {duration:.2f}s: {str(e)}")
+            raise
+
+    @functools.wraps(func)
+    def sync_wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+            duration = time.perf_counter() - start
+            logger.info(f"{func.__name__} completed in {duration:.2f}s")
+            return result
+        except Exception as e:
+            duration = time.perf_counter() - start
+            logger.error(f"{func.__name__} failed after {duration:.2f}s: {str(e)}")
+            raise
+
+    return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+def cache_result(ttl_seconds: int = 300) -> Callable:
+    """Simple in-memory cache with TTL for function results.
+    
+    Args:
+        ttl_seconds: Time to live for cached results in seconds (default: 300)
+        
+    Returns:
+        Decorator function that implements caching
+    """
+    cache: Dict[str, Dict[str, Any]] = {}
+    
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create cache key from function name and arguments
+            key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+            
+            # Check if cached and not expired
+            if key in cache:
+                result = cache[key]
+                if time.time() - result['timestamp'] < ttl_seconds:
+                    logger.debug(f"Cache hit for {func.__name__}")
+                    return result['data']
+            
+            # Execute function and cache result
+            result = func(*args, **kwargs)
+            cache[key] = {
+                'data': result,
+                'timestamp': time.time()
+            }
+            return result
+        return wrapper
+    return decorator
+
+# Common validators
+def is_valid_cve_id(cve_id: str) -> bool:
+    """Validate CVE ID format.
+    
+    Args:
+        cve_id: String to validate as CVE ID
+        
+    Returns:
+        bool: True if valid CVE ID format, False otherwise
+    """
+    import re
+    return bool(re.match(r'^CVE-\d{4}-\d{4,}$', cve_id))
+
+def is_valid_incident_id(incident_id: str) -> bool:
+    """Validate incident ID format.
+    
+    Args:
+        incident_id: String to validate as incident ID
+        
+    Returns:
+        bool: True if valid incident ID format, False otherwise
+    """
+    import re
+    return bool(re.match(r'^INC-\d{8}-\d{4}$', incident_id)) 
