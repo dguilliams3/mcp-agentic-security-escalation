@@ -10,6 +10,7 @@ authors = [
 ]
 dependencies = [
     "asyncio>=3.4.3",
+    "faiss-cpu>=1.11.0",
     "fastmcp>=2.3.3",
     "httpx>=0.28.1",
     "langchain>=0.3.25",
@@ -17,8 +18,11 @@ dependencies = [
     "langchain-openai>=0.3.16",
     "langgraph>=0.4.3",
     "mcp[cli]>=1.8.1",
+    "openai>=1.78.1",
     "orjson>=3.10.18",
+    "pytest>=8.3.5",
     "python-dotenv>=1.1.0",
+    "tiktoken>=0.9.0",
     "yfinance>=0.2.61",
 ]
 
@@ -44,6 +48,7 @@ pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests",
     "slow: marks tests as slow",
+    "asyncio: mark test functions as async/await",
 ]
 
 [tool.black]
