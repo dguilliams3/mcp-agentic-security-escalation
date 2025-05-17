@@ -10,8 +10,16 @@ cve_tools.py
 import json
 import zipfile
 import requests
+import os
+import time
 from pathlib import Path
 from typing import List, Dict, Optional
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # --------------- Configuration ---------------
 
@@ -21,8 +29,71 @@ NVD_RAW_JSON = DATA_DIR / "nvdcve-1.1-2025.json"
 NVD_SUBSET = DATA_DIR / "nvd_subset.json"
 KEV_JSON = DATA_DIR / "kev.json"
 
-# Filter for these vendors/products
-VENDOR_FILTERS = ["cisco", "microsoft", "adobe", "oracle", "tomcat", "mysql"]
+# Rate limiting configuration
+RATE_LIMIT_WITH_KEY = 50/60  # 50 requests per minute
+RATE_LIMIT_WITHOUT_KEY = 10/60  # 10 requests per minute
+last_request_time = 0
+
+# API key configuration
+NIST_API_KEY = os.getenv('NIST_API_KEY', '')
+
+# --------------- Request Handling ---------------
+
+def create_session_with_retries() -> requests.Session:
+    """Create a session with retry strategy."""
+    session = requests.Session()
+    retries = Retry(
+        total=5,  # number of retries
+        backoff_factor=1,  # will sleep for [1s, 2s, 4s, 8s, 16s]
+        status_forcelist=[429, 500, 502, 503, 504]
+    )
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+    return session
+
+def rate_limited_request(url: str, **kwargs) -> requests.Response:
+    """Make a rate-limited request with exponential backoff."""
+    global last_request_time
+    
+    # Determine rate limit based on API key presence
+    rate_limit = RATE_LIMIT_WITH_KEY if NIST_API_KEY else RATE_LIMIT_WITHOUT_KEY
+    
+    # Calculate time to wait
+    now = time.time()
+    time_since_last = now - last_request_time
+    if time_since_last < 1/rate_limit:
+        sleep_time = 1/rate_limit - time_since_last
+        time.sleep(sleep_time)
+    
+    # Add API key to headers if available
+    headers = kwargs.get('headers', {})
+    if NIST_API_KEY:
+        headers['apiKey'] = NIST_API_KEY
+    kwargs['headers'] = headers
+    
+    # Make request with session
+    session = create_session_with_retries()
+    response = session.get(url, **kwargs)
+    last_request_time = time.time()
+    
+    return response
+
+# --------------- Vendor Filter Extraction ---------------
+def extract_vendor_filters() -> list[str]:
+    """Read all installed_software names from incidents and return lowercase tokens."""
+    incidents = json.loads(INCIDENTS_PATH.read_text())
+    filters = set()
+    for inc in incidents:
+        for asset in inc.get("affected_assets", []):
+            for sw in asset.get("installed_software", []):
+                # Option 1: take the full name
+                filters.add(sw["name"].lower())
+                # Option 2: split vendor and product
+                vendor = sw["name"].split()[0].lower()
+                filters.add(vendor)
+    return sorted(filters)
+
+VENDOR_FILTERS = extract_vendor_filters()
+print("Using vendor filters:", VENDOR_FILTERS)
 
 # NVD feed URL for 2025
 NVD_FEED_URL = (
@@ -40,7 +111,7 @@ def download_nvd_feed() -> None:
     DATA_DIR.mkdir(exist_ok=True)
     if not NVD_ZIP.exists():
         print("Downloading NVD feed...")
-        resp = requests.get(NVD_FEED_URL)
+        resp = rate_limited_request(NVD_FEED_URL)
         resp.raise_for_status()
         NVD_ZIP.write_bytes(resp.content)
         print("Downloaded NVD feed.")
@@ -88,7 +159,7 @@ def filter_nvd_subset() -> None:
 def download_kev_feed() -> None:
     """Download the CISA KEV JSON feed."""
     print("Downloading KEV feed...")
-    resp = requests.get(KEV_FEED_URL)
+    resp = rate_limited_request(KEV_FEED_URL)
     resp.raise_for_status()
     DATA_DIR.mkdir(exist_ok=True)
     KEV_JSON.write_bytes(resp.content)
