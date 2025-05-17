@@ -3,27 +3,13 @@
 import pytest
 from mcp_cve_server import (
     test_server,
-    list_incident_ids,
-    search_incidents
+    list_incident_ids
 )
 
 def test_timing_metric():
     """Test timing metric decorator on function."""
     # Test both the return value and that it's logged
     assert test_server() == "Server is running"
-
-def test_search_with_cache():
-    """Test search functionality with timing metrics."""
-    # First search
-    result1 = search_incidents("test")
-    assert isinstance(result1, dict)
-    assert "results" in result1
-    assert "metadata" in result1
-    assert "query" in result1["metadata"]
-    
-    # Second search (should be uncached due to no cache decorator)
-    result2 = search_incidents("test")
-    assert isinstance(result2, dict)
 
 def test_list_incidents_cached():
     """Test incident listing with cache."""

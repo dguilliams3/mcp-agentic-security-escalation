@@ -73,3 +73,39 @@ def flatten_nvd(item: Dict[str, Any]) -> Document:
         "last_modified": item.get("lastModifiedDate"),
     }
     return Document(page_content=page_content, metadata=metadata)
+
+# utils/flatteners.py  (append)
+
+def flatten_incident(incident: dict) -> str:
+    """
+    Convert one incident JSON object into a single text blob
+    suitable for embedding.
+    """
+    lines = [
+        incident.get("title", ""),
+        incident.get("description", ""),
+        incident.get("initial_findings", ""),
+    ]
+
+    # pull installed software
+    for asset in incident.get("affected_assets", []):
+        sw_parts = [
+            f"{sw['name']} {sw.get('version','')}".strip()
+            for sw in asset.get("installed_software", [])
+        ]
+        if sw_parts:
+            lines.append("Software: " + ", ".join(sw_parts))
+
+    # TTPs
+    ttp_parts = [t["name"] for t in incident.get("observed_ttps", [])]
+    if ttp_parts:
+        lines.append("TTPs: " + ", ".join(ttp_parts))
+
+    lines.append("TTP IDs: " + ", ".join(t["id"] for t in incident["observed_ttps"]))
+    lines.append("OS: " + ", ".join(a["os"] for a in incident["affected_assets"]))
+    for ioc in incident["indicators_of_compromise"]:
+        if ioc["type"] in {"file_path","process_name","file_extension",
+                        "library_name","container_id"}:
+            lines.append(f"IOC: {ioc['value']}")
+
+    return "\n".join(filter(None, lines))

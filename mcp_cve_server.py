@@ -1,12 +1,180 @@
-import requests
+import sys
+import traceback
 from typing import Dict, Any, List, Optional
-from pandas import DataFrame
 from fastmcp import FastMCP
 import json
 from pathlib import Path
-from mcp.server.lowlevel import NotificationOptions
+from utils.decorators import timing_metric, cache_result
+from dotenv import load_dotenv
+from utils.retriever import semantic_match_incident, search_text, initialize_embeddings, initialize_indexes
+
+# Load environment variables
+load_dotenv()
+
+from pathlib import Path
+BASE_DIR = Path(__file__).parent               # absolute directory of this file
+DATA_DIR = BASE_DIR / "data"
+
+KEV_ENTRIES = json.loads((DATA_DIR / "kev.json").read_text())["vulnerabilities"]
+NVD_INDEX   = json.loads((DATA_DIR / "nvd_subset.json").read_text())
+
+KEV_FAISS = None
+NVD_FAISS = None
+embeddings = None
+
+initialize_embeddings()
+initialize_indexes()
 
 mcp = FastMCP("cve")
+
+########################################################
+############## CVE MANAGEMENT TOOLS ####################
+########################################################
+
+@mcp.tool(annotations={
+    "title": "Match Incident to CVEs using semantic search",
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": False,
+    "openWorldHint": False
+})
+@timing_metric
+@cache_result(ttl_seconds=30)   # cache identical incident queries for 30s
+def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -> dict:
+    """
+    Given an incident_id, return top-k KEV and NVD candidate CVEs.
+    """
+    incident_resp = get_incident(incident_id)
+    if not incident_resp.get("found"):
+        return {"error": "incident not found", "incident_id": incident_id}
+
+    inc = incident_resp["incident_data"]
+    result = semantic_match_incident(
+        inc,
+        k_kev=k,
+        k_nvd=k,
+        use_mmr=use_mmr,      # pass through flag
+    )
+    # result already looks like {"kev_candidates":[{…}], "nvd_candidates":[{…}]}
+
+    return {"incident_id": incident_id, **result}
+
+@mcp.tool(
+  annotations={
+    "title": "Semantic Free-Form CVE Search",
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": False,
+    "openWorldHint": False
+  }
+)
+@timing_metric
+@cache_result(ttl_seconds=30)   # cache identical free-form queries
+def semantic_search_cves(
+    query: str,
+    sources: List[str] = ["kev", "nvd"],
+    k: int = 5,
+    use_mmr: bool = False,
+    lambda_mult: float = 0.7
+) -> Dict[str, Any]:
+    """
+    Agent-callable tool: run semantic similarity search over  
+    KEV and/or NVD FAISS indexes using search_text().
+    """
+    out: Dict[str, Any] = {"query": query}
+    if "kev" in sources:
+        out["kev_candidates"] = search_text(
+            query, KEV_FAISS, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
+        )
+    if "nvd" in sources:
+        out["nvd_candidates"] = search_text(
+            query, NVD_FAISS, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
+        )
+    return out
+
+@mcp.tool(annotations={
+    "title": "Search NVD Entries (often to find the CVE ID and related information)",
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": False,
+    "openWorldHint": False
+}   )
+@timing_metric
+@cache_result(ttl_seconds=30)   # cache identical free-form queries
+def search_nvd(query: str, limit: int = 10) -> list[dict]:
+    """
+    Return up to `limit` full CVE records whose fields match ALL words in `query`.
+    Case-insensitive substring match over CVE ID, description, and any reference URLs.
+    """
+    qwords = query.lower().split()
+    matches = []
+    for cve_id, rec in NVD_INDEX.items():
+        # flatten searchable text
+        desc = rec.get("cve", {}) \
+                  .get("description", {}) \
+                  .get("description_data", [{}])[0] \
+                  .get("value", "")
+        refs = " ".join([r.get("url","") for r in rec.get("cve",{}) \
+                                          .get("references",{}) \
+                                          .get("reference_data",[])])
+        text = f"{cve_id} {desc} {refs}".lower()
+        if all(w in text for w in qwords):
+            # return the full record so the agent can inspect any fields
+            matches.append(rec)
+            if len(matches) >= limit:
+                break
+    return matches
+
+
+@mcp.tool(
+    annotations={
+        "title": "Search KEV Entries (often to find the CVE ID and related information)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False
+    }
+)
+@timing_metric
+@cache_result(ttl_seconds=30)   # cache identical free-form queries
+def search_kevs(query: str, limit: int = 10) -> list[dict]:
+    """
+    Return up to `limit` KEV entries whose fields match ALL words in `query`.
+    Case-insensitive substring match over cveID, vendorProject, product,
+    vulnerabilityName, and shortDescription.
+    """
+    qwords = query.lower().split()
+    matches = []
+    for entry in KEV_ENTRIES:
+        combined = " ".join([
+            entry.get("cveID", ""),
+            entry.get("vendorProject", ""),
+            entry.get("product", ""),
+            entry.get("vulnerabilityName", ""),
+            entry.get("shortDescription", "")
+        ]).lower()
+        if all(w in combined for w in qwords):
+            matches.append(entry)
+            if len(matches) >= limit:
+                break
+    return matches
+
+@mcp.tool(annotations={
+    "title": "Lookup KEV Entry by CVE ID",
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": False,
+    "openWorldHint": False
+}   )
+@timing_metric
+def lookup_kev_by_cve_id(cve_id: str) -> dict:
+    """
+    Return the entireKEV entry for the given CVE ID.
+    """
+    for entry in KEV_ENTRIES:
+        if entry.get("cveID") == cve_id:
+            return entry
+    return None
 
 ########################################################
 ############## GENERAL TOOLS ###########################
@@ -20,6 +188,7 @@ mcp = FastMCP("cve")
         "openWorldHint": False
     }
 )
+@timing_metric
 def test_server() -> str:
     """Test if the server is running and responsive.
     
@@ -37,6 +206,7 @@ def test_server() -> str:
         "openWorldHint": False
     }
 )
+@timing_metric
 async def get_current_time() -> str:
     """Get the current server time in ISO 8601 format.
     
@@ -55,6 +225,8 @@ async def get_current_time() -> str:
         "openWorldHint": False
     }
 )
+@timing_metric
+@cache_result(ttl_seconds=300)  # Cache system info for 5 minutes
 async def get_system_info() -> Dict[str, Any]:
     """Get basic system information about the server environment.
     
@@ -73,93 +245,6 @@ async def get_system_info() -> Dict[str, Any]:
         "python_version": platform.python_version()
     }
 
-########################################################
-############## SECURITY TOOLS ##########################
-########################################################
-@mcp.tool(
-    annotations={
-        "title": "Fetch CVE Data",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": False,
-        "openWorldHint": True
-    }
-)
-def fetch_cve_data(cve_id: str) -> Dict[str, Any]:
-    """Fetch CVE data from the National Vulnerability Database (NVD) API.
-    
-    Args:
-        cve_id (str): The CVE identifier to fetch (e.g., "CVE-2023-1234")
-    
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - success: bool indicating if the fetch was successful
-            - data: CVE data if successful, including:
-                - id: CVE ID
-                - description: CVE description
-                - severity: CVSS severity scores
-                - references: Related references
-                - published: Publication date
-                - last_modified: Last modification date
-            - error: Error message if not successful
-    """
-    try:
-        # First try to load from our local NVD cache
-        nvd_file = Path("data/nvd_subset.json")
-        if nvd_file.exists():
-            with open(nvd_file, 'r') as f:
-                nvd_data = json.load(f)
-                if cve_id in nvd_data:
-                    cve = nvd_data[cve_id]
-                    return {
-                        "success": True,
-                        "data": {
-                            "id": cve_id,
-                            "description": cve.get("cve", {}).get("description", {}).get("description_data", [{}])[0].get("value", "No description available"),
-                            "severity": {
-                                "v3": cve.get("impact", {}).get("baseMetricV3", {}).get("cvssV3", {}),
-                                "v2": cve.get("impact", {}).get("baseMetricV2", {}).get("cvssV2", {})
-                            },
-                            "references": cve.get("cve", {}).get("references", {}).get("reference_data", []),
-                            "published": cve.get("publishedDate"),
-                            "last_modified": cve.get("lastModifiedDate")
-                        }
-                    }
-        
-        # If not found in NVD cache, try the KEV database
-        kev_file = Path("data/kev.json")
-        if kev_file.exists():
-            with open(kev_file, 'r') as f:
-                kev_data = json.load(f)
-                for vuln in kev_data.get("vulnerabilities", []):
-                    if vuln.get("cveID") == cve_id:
-                        return {
-                            "success": True,
-                            "data": {
-                                "id": vuln.get("cveID"),
-                                "description": vuln.get("shortDescription"),
-                                "severity": "HIGH - Known Exploited Vulnerability",
-                                "vendor_info": vuln.get("vendorProject"),
-                                "product": vuln.get("product"),
-                                "vulnerability_name": vuln.get("vulnerabilityName"),
-                                "date_added": vuln.get("dateAdded"),
-                                "due_date": vuln.get("dueDate"),
-                                "known_ransomware_use": vuln.get("knownRansomwareCampaignUse"),
-                                "cwes": vuln.get("cwes", [])
-                            }
-                        }
-        
-        return {
-            "success": False,
-            "error": f"CVE {cve_id} not found in local database",
-            "note": "To fetch from NVD API directly, an API key is required"
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error fetching CVE data: {str(e)}"
-        }
 
 ########################################################
 ############## INCIDENT MANAGEMENT TOOLS ###############
@@ -173,6 +258,8 @@ def fetch_cve_data(cve_id: str) -> Dict[str, Any]:
         "openWorldHint": False
     }
 )
+@timing_metric
+@cache_result(ttl_seconds=60)  # Cache incident list for 1 minute
 def list_incident_ids(limit: Optional[int] = None) -> Dict[str, Any]:
     """Get a list of incident IDs, optionally limited to a specific count.
     Returns most recent first.
@@ -248,6 +335,8 @@ def list_incident_ids(limit: Optional[int] = None) -> Dict[str, Any]:
         "openWorldHint": False
     }
 )
+@timing_metric
+@cache_result(ttl_seconds=60)  # Cache incident details for 1 minute
 def get_incident(incident_id: str) -> Dict[str, Any]:
     """Get full details of a specific incident.
     
@@ -297,89 +386,6 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
 
 @mcp.tool(
     annotations={
-        "title": "Search Incidents",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": False,
-        "openWorldHint": False
-    }
-)
-def search_incidents(query: str, limit: Optional[int] = None) -> Dict[str, Any]:
-    """Search incidents by any field.
-    Performs a case-insensitive search across all text fields in the incidents.
-    
-    Args:
-        query (str): Search query string
-        limit (Optional[int]): Maximum number of results to return
-        
-    Returns:
-        Dict[str, Any]: Search results with metadata
-    """
-    try:
-        data_file = Path("data/incidents.json")
-        with open(data_file, 'r') as f:
-            incidents = json.load(f)
-        
-        query = query.lower()
-        matches = []
-        
-        for incident in incidents:
-            # Search in title and description
-            if query in incident.get("title", "").lower() or \
-               query in incident.get("description", "").lower():
-                matches.append(incident)
-                continue
-            
-            # Search in affected assets
-            for asset in incident.get("affected_assets", []):
-                if query in str(asset).lower():
-                    matches.append(incident)
-                    break
-            
-            # Search in TTPs
-            for ttp in incident.get("observed_ttps", []):
-                if query in str(ttp).lower():
-                    matches.append(incident)
-                    break
-            
-            # Search in IOCs
-            for ioc in incident.get("indicators_of_compromise", []):
-                if query in str(ioc).lower():
-                    matches.append(incident)
-                    break
-        
-        # Apply limit if specified
-        if limit and limit > 0:
-            matches = matches[:limit]
-        
-        return {
-            "metadata": {
-                "query": query,
-                "total_matches": len(matches),
-                "limit_applied": limit if limit else None
-            },
-            "results": matches
-        }
-        
-    except FileNotFoundError:
-        return {
-            "metadata": {
-                "query": query,
-                "error": "Incident database not found"
-            },
-            "results": []
-        }
-    except Exception as e:
-        return {
-            "metadata": {
-                "query": query,
-                "error": str(e)
-            },
-            "results": []
-        }
-
-@mcp.tool(
-    annotations={
         "title": "Get Incident Schema",
         "readOnlyHint": True,
         "destructiveHint": False,
@@ -387,65 +393,14 @@ def search_incidents(query: str, limit: Optional[int] = None) -> Dict[str, Any]:
         "openWorldHint": False
     }
 )
+@timing_metric
+@cache_result(ttl_seconds=300)  # Cache schema for 5 minutes
 def get_incident_schema() -> Dict[str, Any]:
     """Get the schema definition for incident data.
     
     Returns:
         Dict[str, Any]: Static schema definition of the incident data structure
     """
-    # Original dynamic schema implementation
-    # try:
-    #     data_file = Path("data/Synthetic incident dataset.json")
-    #     with open(data_file, 'r') as f:
-    #         incidents = json.load(f)
-    #         
-    #     if not incidents:
-    #         return {
-    #             "error": "No incidents found in dataset",
-    #             "schema": None
-    #         }
-    #         
-    #     def get_type(value: Any) -> str:
-    #         if isinstance(value, str):
-    #             return "string"
-    #         elif isinstance(value, bool):
-    #             return "boolean"
-    #         elif isinstance(value, int):
-    #             return "integer"
-    #         elif isinstance(value, float):
-    #             return "number"
-    #         elif isinstance(value, list):
-    #             return "array"
-    #         elif isinstance(value, dict):
-    #             return "object"
-    #         else:
-    #             return "unknown"
-    #     
-    #     def analyze_object(obj: Dict) -> Dict[str, Any]:
-    #         schema = {"type": "object", "properties": {}}
-    #         for key, value in obj.items():
-    #             if isinstance(value, dict):
-    #                 schema["properties"][key] = analyze_object(value)
-    #             elif isinstance(value, list) and value:
-    #                 if isinstance(value[0], dict):
-    #                     schema["properties"][key] = {
-    #                         "type": "array",
-    #                         "items": analyze_object(value[0])
-    #                     }
-    #                 else:
-    #                     schema["properties"][key] = {
-    #                         "type": "array",
-    #                         "items": {"type": get_type(value[0])}
-    #                     }
-    #             else:
-    #                 schema["properties"][key] = {"type": get_type(value)}
-    #         return schema
-    #     
-    #     return analyze_object(incidents[0])
-    # except Exception as e:
-    #     return {"error": str(e), "schema": None}
-
-    # Static schema implementation
     return {
         "type": "object",
         "properties": {
@@ -502,9 +457,9 @@ def get_incident_schema() -> Dict[str, Any]:
         "required": ["incident_id", "timestamp", "title", "description"]
     }
 
+
 ########################################################
 ############## MAIN #####################################
 ########################################################
 if __name__ == "__main__":
-    print("Starting CVE MCP Server...")
-    mcp.run()
+    mcp.run(transport="stdio")          # ← KEY CHANGE

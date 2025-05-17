@@ -5,67 +5,81 @@ scripts/build_faiss_indexes.py
 Reads kev.json and nvd_subset.json, flattens each entry,
 embeds with OpenAI, builds & saves two FAISS indexes.
 
-Run:
-    OPENAI_API_KEY=sk-... python scripts/build_faiss_indexes.py
+Have in your .env file:
+    OPENAI_API_KEY=sk-...
 """
 
 from pathlib import Path
-import json
-import argparse
-
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+import json, os, argparse
+from dotenv import load_dotenv
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 from utils.flatteners import flatten_kev, flatten_nvd
 
+# ---------- tiny helper --------------------------------------------------
+def index_is_fresh(json_path: Path, index_dir: Path) -> bool:
+    """
+    Return True if index_dir/index.faiss exists and is newer than json_path.
+    Used to skip needless re-embedding on repeat runs.
+    """
+    faiss_file = index_dir / "index.faiss"
+    return faiss_file.exists() and faiss_file.stat().st_mtime >= json_path.stat().st_mtime
+# -------------------------------------------------------------------------
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY not found – check your .env file.")
+
 DATA_DIR = Path("data")
-OUT_DIR = DATA_DIR / "vectorstore"
+OUT_DIR  = DATA_DIR / "vectorstore"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------- CLI --------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", default="text-embedding-3-small",
-                    help="OpenAI embedding model")
-parser.add_argument("--topk-test", type=int, default=3,
-                    help="Run a smoke-test query and show K results")
+parser.add_argument("--model", default="text-embedding-3-small")
+parser.add_argument("--topk-test", type=int, default=3)
 args = parser.parse_args()
 
 embeddings = OpenAIEmbeddings(model=args.model, show_progress_bar=True)
 
 
-# ---------- Build KEV index ----------
+# ---------- Build / Skip KEV index ----------
 kev_json = DATA_DIR / "kev.json"
-print("Loading KEV JSON …")
-kev_raw = json.load(kev_json.open())
-kev_entries = kev_raw["vulnerabilities"]
+kev_out  = OUT_DIR / "kev"
 
-print(f"Flattening {len(kev_entries)} KEV entries …")
-kev_docs = [flatten_kev(e) for e in kev_entries]
+if index_is_fresh(kev_json, kev_out):
+    print("✅ KEV index up-to-date – skipping build")
+else:
+    print("🔄 Building KEV index …")
+    kev_raw  = json.load(kev_json.open())
+    kev_docs = [flatten_kev(e) for e in kev_raw["vulnerabilities"]]
+    FAISS.from_documents(kev_docs, embeddings).save_local(kev_out)
+    print("✅ Saved KEV index to data/vectorstore/kev\n")
 
-print("Embedding & building KEV FAISS index …")
-faiss_kev = FAISS.from_documents(kev_docs, embeddings)
-faiss_kev.save_local(OUT_DIR / "kev")
-print("✅ Saved KEV index to data/vectorstore/kev\n")
 
-
-# ---------- Build NVD index ----------
+# ---------- Build / Skip NVD index ----------
 nvd_json = DATA_DIR / "nvd_subset.json"
-print("Loading NVD subset JSON …")
-nvd_raw = json.load(nvd_json.open())
-nvd_items = list(nvd_raw.values())  # dict keyed by CVE ID
+nvd_out  = OUT_DIR / "nvd"
 
-print(f"Flattening {len(nvd_items)} NVD entries …")
-nvd_docs = [flatten_nvd(item) for item in nvd_items]
-
-print("Embedding & building NVD FAISS index …")
-faiss_nvd = FAISS.from_documents(nvd_docs, embeddings)
-faiss_nvd.save_local(OUT_DIR / "nvd")
-print("✅ Saved NVD index to data/vectorstore/nvd\n")
+if index_is_fresh(nvd_json, nvd_out):
+    print("✅ NVD index up-to-date – skipping build")
+else:
+    print("🔄 Building NVD index …")
+    nvd_raw  = json.load(nvd_json.open())
+    nvd_docs = [flatten_nvd(item) for item in nvd_raw.values()]
+    FAISS.from_documents(nvd_docs, embeddings).save_local(nvd_out)
+    print("✅ Saved NVD index to data/vectorstore/nvd\n")
 
 
 # ---------- Smoke-test query ----------
 if args.topk_test > 0:
-    retriever_kev = FAISS.load_local(OUT_DIR / "kev", embeddings).as_retriever()
-    print(f"\n🔎 Quick test: top-{args.topk_test} KEV matches for query ‘Fortinet stack overflow’")
-    for d in retriever_kev.get_relevant_documents("Fortinet stack overflow")[: args.topk_test]:
-        print(f"• {d.metadata['cve_id']}  |  score≈{d.metadata.get('score', 'NA')}")
-        print(f"  {d.page_content.splitlines()[1][:100]}…\n")
+    print(f"\n🔎 top-{args.topk_test} KEV matches for 'Fortinet stack overflow'")
+    faiss_kev = FAISS.load_local(
+        kev_out, embeddings, allow_dangerous_deserialization=True
+    )
+    for doc, score in faiss_kev.similarity_search_with_score(
+        "Fortinet stack overflow", k=args.topk_test
+    ):
+        print(f"• {doc.metadata['cve_id']} | score={score:.4f}")
+        print(f"  {doc.page_content.splitlines()[1][:100]}…\n")

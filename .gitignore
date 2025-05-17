@@ -28,7 +28,12 @@ Thumbs.db
 logs/
 temp/
 .cache/
-data/
+# generated vector stores
+data/vectorstore/
+# full upstream feeds
+data/kev.json
+data/nvd_subset.json
+nvdcve-*.json*
 
 # Build and Distribution
 dist/
@@ -45,4 +50,3 @@ instance/
 # Experimental and Archive
 experimental/
 archive/ 
-
