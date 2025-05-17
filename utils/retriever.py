@@ -10,43 +10,20 @@ logging.getLogger("openai").setLevel(logging.ERROR)  # suppress verbose init
 BASE_DIR = Path(__file__).parent.parent        # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
 
-# embeddings = OpenAIEmbeddings()
-# KEV_FAISS  = FAISS.load_local(DATA_DIR / "kev", OpenAIEmbeddings(),
-#                               allow_dangerous_deserialization=True)
-# NVD_FAISS  = FAISS.load_local(DATA_DIR / "nvd", OpenAIEmbeddings(),
-#                               allow_dangerous_deserialization=True)
-
-# _lazy_kev = None
-# _lazy_nvd = None
-
-# def get_kev_store() -> FAISS:
-#     global _lazy_kev
-#     if _lazy_kev is None:
-#         _lazy_kev = FAISS.load_local(
-#             DATA_DIR / "kev", embeddings,
-#             allow_dangerous_deserialization=True
-#         )
-#     return _lazy_kev
-
-# def get_nvd_store() -> FAISS:
-#     global _lazy_nvd
-#     if _lazy_nvd is None:
-#         _lazy_nvd = FAISS.load_local(
-#             DATA_DIR / "nvd", embeddings,
-#             allow_dangerous_deserialization=True
-#         )
-#     return _lazy_nvd
+# We use OpenAI Embeddings for speed and quality given the small size of the data, but this can be changed to other embedding models like Sentance Transformers' all-MiniLM-L6-v2, etc.
+def initialize_embeddings():
+    global embeddings
+    embeddings = OpenAIEmbeddings()
 
 def initialize_indexes():
     global KEV_FAISS, NVD_FAISS
+    if embeddings is None:
+        initialize_embeddings()
+
     KEV_FAISS  = FAISS.load_local(DATA_DIR / "kev", OpenAIEmbeddings(),
                               allow_dangerous_deserialization=True)
     NVD_FAISS  = FAISS.load_local(DATA_DIR / "nvd", OpenAIEmbeddings(),
                               allow_dangerous_deserialization=True)
-
-def initialize_embeddings():
-    global embeddings
-    embeddings = OpenAIEmbeddings()
 
 def _search(
     store: FAISS,
