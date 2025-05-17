@@ -93,7 +93,7 @@ def semantic_search_cves(
     return out
 
 @mcp.tool(annotations={
-    "title": "Search NVD Entries (often to find the CVE ID and related information)",
+    "title": "Search NVD Entries (often to find the CVE ID and related information) for a specific match for ALL words in the query",
     "readOnlyHint": True,
     "destructiveHint": False,
     "idempotentHint": False,
@@ -455,6 +455,141 @@ def get_incident_schema() -> Dict[str, Any]:
             "initial_findings": {"type": "string", "description": "Initial analysis and findings"}
         },
         "required": ["incident_id", "timestamp", "title", "description"]
+    }
+
+@mcp.tool(
+    annotations={
+        "title": "Get NVD Schema",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False
+    }
+)
+@timing_metric
+@cache_result(ttl_seconds=300)
+def get_nvd_schema() -> Dict[str, Any]:
+    """Return the nested schema for entries in the NVD (National Vulnerability Database) JSON file."""
+    return {
+        "type": "object",
+        "properties": {
+            "cve": {
+                "type": "object",
+                "properties": {
+                    "data_type": {"type": "string"},
+                    "data_format": {"type": "string"},
+                    "data_version": {"type": "string"},
+                    "CVE_data_meta": {
+                        "type": "object",
+                        "properties": {
+                            "ID": {"type": "string"},
+                            "ASSIGNER": {"type": "string"}
+                        }
+                    },
+                    "problemtype": {
+                        "type": "object",
+                        "properties": {
+                            "problemtype_data": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "description": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "lang": {"type": "string"},
+                                                    "value": {"type": "string"}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "references": {
+                        "type": "object",
+                        "properties": {
+                            "reference_data": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {"type": "string"},
+                                        "name": {"type": "string"},
+                                        "refsource": {"type": "string"},
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {"type": "string"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": {
+                        "type": "object",
+                        "properties": {
+                            "description_data": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "lang": {"type": "string"},
+                                        "value": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "configurations": {
+                "type": "object",
+                "properties": {
+                    "CVE_data_version": {"type": "string"},
+                    "nodes": {"type": "array"}
+                }
+            },
+            "impact": {"type": "object"},
+            "publishedDate": {"type": "string"},
+            "lastModifiedDate": {"type": "string"}
+        }
+    }
+
+@mcp.tool(
+    annotations={
+        "title": "Get KEV Schema",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False
+    }
+)
+@timing_metric
+@cache_result(ttl_seconds=300)
+def get_kev_schema() -> Dict[str, Any]:
+    """Return the nested schema for entries in the KEV (Known Exploited Vulnerabilities) JSON file."""
+    return {
+        "type": "object",
+        "properties": {
+            "cveID": {"type": "string"},
+            "vendorProject": {"type": "string"},
+            "product": {"type": "string"},
+            "vulnerabilityName": {"type": "string"},
+            "dateAdded": {"type": "string"},
+            "shortDescription": {"type": "string"},
+            "requiredAction": {"type": "string"},
+            "dueDate": {"type": "string"},
+            "knownRansomwareCampaignUse": {"type": "string"},
+            "notes": {"type": "string"},
+            "cwes": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
+        }
     }
 
 
