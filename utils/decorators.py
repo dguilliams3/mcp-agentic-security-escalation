@@ -16,8 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(Path('logs/mcp_cve.log')),
-        logging.StreamHandler()
+        logging.FileHandler(Path('logs/mcp_cve.log'))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -92,28 +91,3 @@ def cache_result(ttl_seconds: int = 300) -> Callable:
             return result
         return wrapper
     return decorator
-
-# Common validators
-def is_valid_cve_id(cve_id: str) -> bool:
-    """Validate CVE ID format.
-    
-    Args:
-        cve_id: String to validate as CVE ID
-        
-    Returns:
-        bool: True if valid CVE ID format, False otherwise
-    """
-    import re
-    return bool(re.match(r'^CVE-\d{4}-\d{4,}$', cve_id))
-
-def is_valid_incident_id(incident_id: str) -> bool:
-    """Validate incident ID format.
-    
-    Args:
-        incident_id: String to validate as incident ID
-        
-    Returns:
-        bool: True if valid incident ID format, False otherwise
-    """
-    import re
-    return bool(re.match(r'^INC-\d{8}-\d{4}$', incident_id)) 
