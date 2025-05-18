@@ -1,119 +1,69 @@
-# MCP Agents RAD Security
+# MCP CVE Server
 
-A Python-based project utilizing the Mission Control Protocol (MCP) framework along with LangChain for AI agent implementation, focused on security analysis.
+## Overview
 
-## Quick Start
+The MCP (Multi-Context Processor) CVE Server is a sophisticated vulnerability intelligence tool designed to provide semantic search and analysis capabilities across Known Exploited Vulnerabilities (KEV) and the National Vulnerability Database (NVD).
+
+## Features
+
+- 🔍 Semantic Search Across Vulnerability Databases
+- 🔬 Incident-to-CVE Matching
+- 📊 Flexible Query Capabilities
+- 🚀 High-Performance Indexing
+
+### Key Tools
+
+1. **Semantic CVE Search**
+   - Search across KEV and NVD databases
+   - Supports multiple search strategies
+   - Configurable result count and matching algorithm
+
+2. **Incident Correlation**
+   - Match incident details to potential CVEs
+   - Supports multiple matching strategies
+
+3. **Detailed Schema Exploration**
+   - Retrieve schemas for KEV and NVD databases
+   - Understand data structures programmatically
+
+## Prerequisites
+
+- Python 3.8+
+- Dependencies listed in `requirements.txt`
+
+## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mcp-agents-radsecurity.git
-cd mcp-agents-radsecurity
+git clone https://github.com/dguilliams3/mcp-agentic-security-escalation.git
 
-# Create and activate virtual environment
+# Create a virtual environment
 python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Unix/MacOS:
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
 
-# Install the package with development dependencies
-pip install -e ".[dev]"
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-## Requirements
+## Configuration
 
-- Python 3.12 or higher
-- OpenAI API key (required for LangChain integration)
+1. Copy `.env.example` to `.env`
+2. Configure any necessary environment variables
 
-## Project Structure
+## Available Tools
 
-```
-mcp-agents-radsecurity/
-├── mcp_cve_server.py     # Contains MCP Tools for agent(s)
-├── mcp_cve_client.py     # Client to use tools and perform main LLM call
-├── utils/                # Utility functions
-├── tests/               # Test files
-├── data/                # Data resources (imported .json files, etc.)
-└── examples/            # Example usage
-```
-
-## Usage
-
-### Basic Usage
-
+### Semantic Search
 ```python
-from mcp_cve_server import test_server, search_incidents
-from mcp_cve_client import CVEClient
+# Search CVEs
+semantic_search_cves("remote code execution")
 
-# Test server connection
-test_server()
-
-# Search for incidents
-results = search_incidents("your_query")
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_specific.py
-
-# Run with coverage report
-pytest --cov=.
+# Match incident to CVEs
+match_incident_to_cves("incident_123")
 ```
 
 ## Development
 
-### Setup Development Environment
-
+### Running Tests
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Install pre-commit hooks (optional)
-pre-commit install
+pytest tests/
 ```
-
-### Code Style
-
-This project uses:
-- Black for code formatting
-- isort for import sorting
-- Ruff for linting
-
-Format your code:
-```bash
-black .
-isort .
-ruff check .
-```
-
-### Making Changes
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Run the test suite
-4. Submit a pull request
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Import Errors**: Make sure you've installed the package in editable mode with `pip install -e ".[dev]"`
-2. **API Key Issues**: Verify your OpenAI API key is correctly set in `.env`
-3. **Python Version**: Ensure you're using Python 3.12 or higher
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
