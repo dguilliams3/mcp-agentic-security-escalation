@@ -6,10 +6,20 @@ import json
 from pathlib import Path
 from utils.decorators import timing_metric, cache_result
 from dotenv import load_dotenv
-from utils.retriever import semantic_match_incident, search_text, initialize_embeddings, initialize_indexes
+from utils.retriever import ( 
+    initialize_embeddings,
+    initialize_indexes,
+    match_incident_to_cves,
+    semantic_match_incident,
+    semantic_search_cves,
+    list_incident_ids,
+    get_incident
+)
 
+from utils.logging_utils import setup_logger
 # Load environment variables
 load_dotenv()
+logger = setup_logger()
 
 from pathlib import Path
 BASE_DIR = Path(__file__).parent               # absolute directory of this file
@@ -31,6 +41,7 @@ mcp = FastMCP("cve")
 ############## CVE MANAGEMENT TOOLS ####################
 ########################################################
 
+
 @mcp.tool(annotations={
     "title": "Match Incident to CVEs using semantic search",
     "readOnlyHint": True,
@@ -40,24 +51,11 @@ mcp = FastMCP("cve")
 })
 @timing_metric
 @cache_result(ttl_seconds=30)   # cache identical incident queries for 30s
-def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -> dict:
-    """
-    Given an incident_id, return top-k KEV and NVD candidate CVEs.
-    """
-    incident_resp = get_incident(incident_id)
-    if not incident_resp.get("found"):
-        return {"error": "incident not found", "incident_id": incident_id}
+def match_incident_to_cves_tool(incident_id: str, k: int = 5, use_mmr: bool = True) -> dict:
+    return match_incident_to_cves(incident_id, k, use_mmr)
 
-    inc = incident_resp["incident_data"]
-    result = semantic_match_incident(
-        inc,
-        k_kev=k,
-        k_nvd=k,
-        use_mmr=use_mmr,      # pass through flag
-    )
-    # result already looks like {"kev_candidates":[{…}], "nvd_candidates":[{…}]}
-
-    return {"incident_id": incident_id, **result}
+def semantic_match_incident_tool(incident_id: str, k: int = 5, use_mmr: bool = True) -> dict:
+    return semantic_match_incident(incident_id, k, use_mmr)
 
 @mcp.tool(
   annotations={
@@ -70,28 +68,14 @@ def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -
 )
 @timing_metric
 @cache_result(ttl_seconds=30)   # cache identical free-form queries
-def semantic_search_cves(
-    query: str,
-    sources: List[str] = ["kev", "nvd"],
+def semantic_search_cves_tool(    query: str,
+    sources: List[str] = ["kev", "nvd", "historical"],
     k: int = 5,
     use_mmr: bool = False,
     lambda_mult: float = 0.7
 ) -> Dict[str, Any]:
-    """
-    Agent-callable tool: run semantic similarity search over  
-    KEV and/or NVD FAISS indexes using search_text().
-    """
-    out: Dict[str, Any] = {"query": query}
-    if "kev" in sources:
-        out["kev_candidates"] = search_text(
-            query, KEV_FAISS, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
-        )
-    if "nvd" in sources:
-        out["nvd_candidates"] = search_text(
-            query, NVD_FAISS, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
-        )
-    return out
-
+    return semantic_search_cves(query, sources, k, use_mmr, lambda_mult)
+      
 @mcp.tool(annotations={
     "title": "Search NVD Entries (often to find the CVE ID and related information) for a specific match for ALL words in the query",
     "readOnlyHint": True,
@@ -128,7 +112,7 @@ def search_nvd(query: str, limit: int = 10) -> list[dict]:
 
 @mcp.tool(
     annotations={
-        "title": "Search KEV Entries (often to find the CVE ID and related information)",
+        "title": "Search KEV Entries (Return up to `limit` KEV entries whose fields match ALL words in `query`)",
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": False,
@@ -169,7 +153,7 @@ def search_kevs(query: str, limit: int = 10) -> list[dict]:
 @timing_metric
 def lookup_kev_by_cve_id(cve_id: str) -> dict:
     """
-    Return the entireKEV entry for the given CVE ID.
+    Return the entire KEV entry for the given CVE ID.
     """
     for entry in KEV_ENTRIES:
         if entry.get("cveID") == cve_id:
@@ -249,6 +233,8 @@ async def get_system_info() -> Dict[str, Any]:
 ########################################################
 ############## INCIDENT MANAGEMENT TOOLS ###############
 ########################################################
+
+
 @mcp.tool(
     annotations={
         "title": "List Incident IDs",
@@ -259,72 +245,9 @@ async def get_system_info() -> Dict[str, Any]:
     }
 )
 @timing_metric
-@cache_result(ttl_seconds=60)  # Cache incident list for 1 minute
-def list_incident_ids(limit: Optional[int] = None) -> Dict[str, Any]:
-    """Get a list of incident IDs, optionally limited to a specific count.
-    Returns most recent first.
-    
-    Args:
-        limit (Optional[int]): Maximum number of IDs to return
-        
-    Returns:
-        Dict[str, Any]: Dictionary containing:
-            - success: bool indicating if operation succeeded
-            - incident_ids: List of incident IDs if successful
-            - debug_info: Dictionary with diagnostic information
-    """
-    try:
-        data_file = Path("data/incidents.json")
-        debug_info = {
-            "attempted_path": str(data_file.absolute()),
-            "file_exists": data_file.exists(),
-            "current_working_dir": str(Path.cwd())
-        }
-        
-        with open(data_file, 'r') as f:
-            incidents = json.load(f)
-            
-        incident_ids = [incident["incident_id"] for incident in incidents]
-        incident_ids.sort(reverse=True)
-        
-        if limit and limit > 0:
-            incident_ids = incident_ids[:limit]
-            
-        return {
-            "success": True,
-            "incident_ids": incident_ids,
-            "debug_info": {
-                **debug_info,
-                "num_incidents_loaded": len(incidents)
-            }
-        }
-    except FileNotFoundError:
-        return {
-            "success": False,
-            "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": "File not found"
-            }
-        }
-    except json.JSONDecodeError as e:
-        return {
-            "success": False,
-            "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": f"JSON decode error\n{e}"
-            }
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": str(e)
-            }
-        }
+@cache_result(ttl_seconds=300)  # Cache incident list for 5 minutes
+def list_incident_ids_tool(limit: Optional[int] = None, start_index: Optional[int] = 0) -> Dict[str, Any]:
+    return list_incident_ids(limit, start_index)
 
 @mcp.tool(
     annotations={
@@ -337,52 +260,8 @@ def list_incident_ids(limit: Optional[int] = None) -> Dict[str, Any]:
 )
 @timing_metric
 @cache_result(ttl_seconds=60)  # Cache incident details for 1 minute
-def get_incident(incident_id: str) -> Dict[str, Any]:
-    """Get full details of a specific incident.
-    
-    Args:
-        incident_id (str): The ID of the incident to retrieve
-        
-    Returns:
-        Dict[str, Any]: Incident data with metadata, or error information if not found
-    """
-    try:
-        data_file = Path("data/incidents.json")
-        with open(data_file, 'r') as f:
-            incidents = json.load(f)
-        
-        # Find the specific incident
-        incident = next((inc for inc in incidents if inc["incident_id"] == incident_id), None)
-        
-        if incident:
-            return {
-                "found": True,
-                "incident_data": incident,
-                "metadata": {
-                    "timestamp": incident.get("timestamp"),
-                    "num_affected_assets": len(incident.get("affected_assets", [])),
-                    "num_ttps": len(incident.get("observed_ttps", [])),
-                    "num_iocs": len(incident.get("indicators_of_compromise", []))
-                }
-            }
-        else:
-            return {
-                "found": False,
-                "error": "Incident not found",
-                "incident_id": incident_id
-            }
-    except FileNotFoundError:
-        return {
-            "found": False,
-            "error": "Incident database not found",
-            "incident_id": incident_id
-        }
-    except Exception as e:
-        return {
-            "found": False,
-            "error": str(e),
-            "incident_id": incident_id
-        }
+def get_incident_tool(incident_id: str) -> Dict[str, Any]:
+    return get_incident(incident_id)      
 
 @mcp.tool(
     annotations={
@@ -596,5 +475,5 @@ def get_kev_schema() -> Dict[str, Any]:
 ########################################################
 ############## MAIN #####################################
 ########################################################
-if __name__ == "__main__":
+if __name__ == "__main__":    
     mcp.run(transport="stdio")          # ← KEY CHANGE
