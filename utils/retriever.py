@@ -8,13 +8,15 @@ from langchain_community.vectorstores import FAISS
 from utils.decorators import cache_result, timing_metric
 from utils.flatteners import flatten_incident
 from utils.logging_utils import setup_logger
+from langchain.schema import Document
+from typing import Any, Dict, List
 
 BASE_DIR = Path(__file__).parent.parent        # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
 KEV_FAISS = None
 NVD_FAISS = None
-INCIDENT_ANALYSIS_HISTORY_FAISS = None
-DUMMY_ANALYSES_FAISS = None
+INCIDENT_HISTORY_FAISS = None
+INCIDENT_HISTORY_FAISS = None
 embeddings = None
 
 logger = setup_logger("retriever")
@@ -23,9 +25,6 @@ logger = setup_logger("retriever")
 # =========================================================================
 # These functions handle the initialization of embeddings and vector indexes
 # for semantic search across vulnerability databases
-
-from typing import Any, Dict, List
-
 
 @timing_metric
 def initialize_embeddings():
@@ -67,14 +66,14 @@ def initialize_indexes():
     - Dangerous deserialization is allowed for loading pre-built indexes
 
     Note:
-        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS, DUMMY_ANALYSES_FAISS
+        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_HISTORY_FAISS  
         - Requires OpenAI embeddings to be initialized first
         - Uses local vector store files in the 'data/vectorstore' directory
 
     Raises:
         Various exceptions if index loading fails
     """
-    global KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS, DUMMY_ANALYSES_FAISS
+    global KEV_FAISS, NVD_FAISS, INCIDENT_HISTORY_FAISS
     if embeddings is None:
         initialize_embeddings()
 
@@ -82,11 +81,8 @@ def initialize_indexes():
                               allow_dangerous_deserialization=True)
     NVD_FAISS = FAISS.load_local(DATA_DIR / "nvd", embeddings,
                               allow_dangerous_deserialization=True)
-    INCIDENT_ANALYSIS_HISTORY_FAISS = FAISS.load_local(DATA_DIR / "incident_analysis_history", embeddings,
+    INCIDENT_HISTORY_FAISS = FAISS.load_local(DATA_DIR / "incident_analysis_history", embeddings,
                                allow_dangerous_deserialization=True)
-    DUMMY_ANALYSES_FAISS = FAISS.load_local(DATA_DIR / "dummy_analyses", embeddings,
-                               allow_dangerous_deserialization=True)
-
 # =========================================================================
 # CORE SEARCH UTILITY FUNCTIONS
 # =========================================================================
@@ -640,12 +636,82 @@ def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -
 
     return {"incident_id": incident_id, **result}
 
+@timing_metric
+def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dict[str, Any]:
+    """
+    Get historical context and similar analyses for a specific list of incidents.
+    
+    This function takes a list of incident IDs and finds similar historical
+    incidents and their analyses for each one. It provides a comprehensive view
+    of historical context for the specified incidents.
+    
+    Args:
+        incident_ids (List[str]): List of incident IDs to get historical context for
+        top_k (int, optional): Number of top similar incidents to return per incident. 
+            Defaults to 3.
+    
+    Returns:
+        Dict[str, Any]: A comprehensive mapping of incidents to their historical context:
+            - 'success': Boolean indicating if the operation was successful
+            - 'results': Dictionary of incident IDs to their historical context
+            - 'metadata': Information about the processing
+                * 'incidents_processed': Actual number of incidents processed
+                * 'top_k': Number of similar incidents retrieved per incident
+    
+    Example:
+        historical_context = batch_get_historical_context(
+            incident_ids=["INC-2024-001", "INC-2024-002"],
+            top_k=3
+        )
+        for incident_id, context in historical_context['results'].items():
+            print(f"Historical context for {incident_id}: {context}")
+    """
+    # Initialize indexes if needed
+    if INCIDENT_HISTORY_FAISS is None:
+        logger.info("Historical incident index not initialized, initializing now")
+        initialize_indexes()
+
+    incident_id_to_context_map = []
+    
+    # Process each incident ID
+    for incident_id in incident_ids:
+        # Get incident data
+        incident_data = get_incident(incident_id)
+        
+        if incident_data.get("found"):
+            # Get historical context for this incident
+            historical_context = get_similar_incidents_with_analyses(
+                incident=incident_data["incident_data"],
+                k=top_k,
+                use_mmr=True,
+                incident_fields=["incident_id", "similarity"],
+                analysis_fields=["incident_risk_level", "incident_summary", "cve_ids"]
+            )
+            
+            incident_id_to_context_map.append({
+                "incident_id": incident_id,
+                "historical_context": historical_context
+            })
+        else:
+            incident_id_to_context_map.append({
+                "incident_id": incident_id,
+                "error": "Incident not found"
+            })
+            
+    return {
+        "success": True,
+        "results": incident_id_to_context_map,
+        "metadata": {
+            "incidents_processed": len(incident_id_to_context_map),
+            "top_k": top_k
+        }
+    }
+
 # =========================================================================
 # INCIDENT ANALYSIS HISTORY FUNCTIONS
 # =========================================================================
 # Search and retrieve historical incident analysis data
 
-@timing_metric
 @cache_result(ttl_seconds=3600)
 def search_incident_analysis_history(
     query: str, 
@@ -672,9 +738,11 @@ def search_incident_analysis_history(
     
     Returns:
         List[Dict]: A list of matching incident analysis documents, each containing:
-            - metadata from the original document
-            - 'similarity' score of the match
-            - 'preview' of the document content
+            - incident_id: ID of the similar incident
+            - incident_summary: Summary of the incident
+            - incident_risk_level: Risk level assigned to the incident
+            - cve_ids: Associated CVEs and their details
+            - similarity: Similarity score of the match
     
     Example:
         results = search_incident_analysis_history("ransomware attack")
@@ -682,31 +750,32 @@ def search_incident_analysis_history(
     """
     logger.info(f"Searching incident analysis history with query: {query}")
     
-    # Embed the query
-    query_vec = embeddings.embed_query(query)
-    if INCIDENT_ANALYSIS_HISTORY_FAISS is None:
-        logger.info("Batch history index not initialized, initializing now")
+    # Initialize indexes if needed
+    if INCIDENT_HISTORY_FAISS is None:
+        logger.info("Historical incident index not initialized, initializing now")
         initialize_indexes()
 
+    # Perform the search
     if use_mmr:
         # MMR path: pull doc+score
-        hits = INCIDENT_ANALYSIS_HISTORY_FAISS.max_marginal_relevance_search_with_score_by_vector(
-            query_vec,
+        hits = INCIDENT_HISTORY_FAISS.max_marginal_relevance_search_with_score_by_vector(
+            embeddings.embed_query(query),
             k=k,
             fetch_k=2*k,
             lambda_mult=lambda_mult,
         )
     else:
         # regular similarity
-        hits = INCIDENT_ANALYSIS_HISTORY_FAISS.similarity_search_with_score(query, k=k)
+        hits = INCIDENT_HISTORY_FAISS.similarity_search_with_score(query, k=k)
 
+    # Format the results
     out = []
     for doc, score in hits:
         m = doc.metadata.copy()
-        m["similarity"] = score
-        m["preview"] = doc.page_content
+        m["similarity"] = float(score)
         out.append(m)
     
+    logger.info(f"Found {len(out)} similar incidents")
     return out
 
 # =========================================================================
@@ -811,8 +880,8 @@ def search_similar_incidents(
     logger.info(f"Searching for similar incidents with k={k}, MMR={use_mmr}")
     
     # Initialize indexes if needed
-    if DUMMY_ANALYSES_FAISS is None:
-        logger.info("Dummy analyses index not initialized, initializing now")
+    if INCIDENT_HISTORY_FAISS is None:
+        logger.info("Historical analyses index not initialized, initializing now")
         initialize_indexes()
     
     # Flatten the incident for searching
@@ -821,7 +890,7 @@ def search_similar_incidents(
     # Perform the search
     if use_mmr:
         # MMR path: pull doc+score
-        hits = DUMMY_ANALYSES_FAISS.max_marginal_relevance_search_with_score_by_vector(
+        hits = INCIDENT_HISTORY_FAISS.max_marginal_relevance_search_with_score_by_vector(
             embeddings.embed_query(query_text),
             k=k,
             fetch_k=2*k,
@@ -829,7 +898,7 @@ def search_similar_incidents(
         )
     else:
         # regular similarity
-        hits = DUMMY_ANALYSES_FAISS.similarity_search_with_score(query_text, k=k)
+        hits = INCIDENT_HISTORY_FAISS.similarity_search_with_score(query_text, k=k)
 
     # Format the results
     out = []
@@ -987,6 +1056,95 @@ def get_similar_incidents_with_analyses(
             }
         }
     }
+
+@timing_metric
+async def add_incident_to_history(incident: dict, analysis: dict):
+    """
+    Add a new incident and its analysis to the FAISS index without rebuilding.
+    
+    Args:
+        incident (dict): The incident data
+        analysis (dict): The LLM's analysis of the incident
+    """
+    try:
+        # Flatten the incident for embedding
+        flattened_text = flatten_incident(incident)
+        
+        # Create document with metadata
+        doc = Document(
+            page_content=flattened_text,
+            metadata={
+                "incident_id": incident["incident_id"],
+                "timestamp": incident["timestamp"],
+                "incident_summary": analysis["incident_summary"],
+                "incident_risk_level": analysis["incident_risk_level"],
+                "cve_ids": analysis["cve_ids"],
+                "incident_risk_level_explanation": analysis["incident_risk_level_explanation"]
+            }
+        )
+        
+        # Add to existing FAISS index
+        global INCIDENT_HISTORY_FAISS
+        if INCIDENT_HISTORY_FAISS is None:
+            logger.info("Dummy analyses index not initialized, initializing now")
+            initialize_indexes()
+            
+        INCIDENT_HISTORY_FAISS.add_documents([doc])
+        
+        # Save the updated index
+        INCIDENT_HISTORY_FAISS.save_local("data/vectorstore/dummy_incidents")
+        
+        logger.info(f"Added incident {incident['incident_id']} to history index")
+        
+    except Exception as e:
+        logger.error(f"Error adding incident to history: {str(e)}")
+        raise
+
+@timing_metric
+async def save_incident_analysis(incident_id: str, llm_response: str):
+    """
+    Parse and save the LLM's analysis response for future lookup.
+    
+    Args:
+        incident_id (str): The ID of the incident being analyzed
+        llm_response (str): The raw response from the LLM
+    """
+    try:
+        # Parse the JSON from the LLM response
+        analysis = json.loads(llm_response)
+        
+        # Validate required fields
+        required_fields = [
+            "incident_id", "incident_summary", "cve_ids",
+            "incident_risk_level", "incident_risk_level_explanation"
+        ]
+        for field in required_fields:
+            if field not in analysis:
+                raise ValueError(f"Missing required field: {field}")
+        
+        # Read existing analyses
+        analyses_file = "data/dummy_agent_incident_analyses.json"
+        try:
+            with open(analyses_file, 'r') as f:
+                analyses = json.load(f)
+        except FileNotFoundError:
+            analyses = []
+        
+        # Add new analysis
+        analyses.append(analysis)
+        
+        # Save updated analyses
+        with open(analyses_file, 'w') as f:
+            json.dump(analyses, f, indent=2)
+        
+        logger.info(f"Saved analysis for incident {incident_id}")
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM response as JSON: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Error saving incident analysis: {str(e)}")
+        raise
 
 # =========================================================================
 # MAIN EXECUTION BLOCK
