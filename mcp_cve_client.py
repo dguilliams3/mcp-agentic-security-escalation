@@ -2,7 +2,9 @@
 import asyncio, json, os
 from dotenv import load_dotenv
 from datetime import timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
+from pydantic import BaseModel, Field
+
 # LangChain & MCP
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_openai import ChatOpenAI
@@ -16,6 +18,7 @@ from langchain.prompts import (
     ChatPromptTemplate,
 )
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain.output_parsers import PydanticOutputParser
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
 # Local imports
@@ -30,6 +33,26 @@ from utils.retriever import (
     batch_get_historical_context
 )
 
+# Pydantic models for structured output
+class CVEInfo(BaseModel):
+    cve_id: str = Field(description="The CVE ID that is related to the incident")
+    cve_summary: str = Field(description="A brief summary of the CVE and its relation to the incident")
+    cve_relevance: float = Field(description="The estimated relevance level of the CVE match (0.0-1.0)")
+    cve_risk_level: float = Field(description="The risk level of the CVE on a scale of (0.0-1.0)")
+
+class IncidentAnalysis(BaseModel):
+    incident_id: str = Field(description="The ID of the incident that caused the error")
+    incident_summary: str = Field(description="A brief summary of the incident")
+    cve_ids: List[CVEInfo] = Field(description="List of related CVEs and their details")
+    incident_risk_level: float = Field(description="The risk level of the incident (0.0-1.0)")
+    incident_risk_level_explanation: str = Field(description="An explanation of the rationale for the risk level assessment")
+
+class IncidentAnalysisList(BaseModel):
+    incidents: List[IncidentAnalysis] = Field(description="List of incident analyses")
+
+# Initialize parser
+parser = PydanticOutputParser(pydantic_object=IncidentAnalysisList)
+
 load_dotenv()  # Load environment variables from .env file
 logger = setup_logger()  # Optional: pass custom name or log_file
 
@@ -43,10 +66,10 @@ model_name = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 # 1) define a template with two variables
 SYSTEM_TMPL = """
-You are a CVE‐analysis assistant.  Before using any tools, here is your pre‐tool context including the Incident IDs and additional information  :
+You are a CVE‐analysis assistant. Analyze the following incidents and provide structured analysis.
 
-Incident IDs:
-{incident_ids}
+Incident Details:
+{incident_details}
 
 Batch FAISS matches (KEV/NVD):
 {batch_faiss_results}
@@ -54,25 +77,35 @@ Batch FAISS matches (KEV/NVD):
 Historical FAISS‐anchoring context:
 {historical_faiss_results}
 
+{format_instructions}
+
 Now, when I ask you to analyze incidents, use the KEV/NVD context to inform your severity rankings and the historical context to normalize your severity rankings.
 """
 
 def generate_prompt(query: str, batch_faiss_results: List[Dict[str, Any]], historical_faiss_results: List[Dict[str, Any]]):
-    # Extract incident IDs from batch_faiss_results
+    # Extract incident IDs and get full details
     incident_ids = [
         result["incident_id"] 
         for result in batch_faiss_results.get("results", [])
         if "incident_id" in result
     ]
     
+    # Get full incident details
+    incident_details = []
+    for incident_id in incident_ids:
+        incident_data = get_incident(incident_id)
+        if incident_data.get("found"):
+            incident_details.append(incident_data["incident_data"])
+    
     system_prompt = SystemMessagePromptTemplate.from_template(SYSTEM_TMPL)
-    human_prompt  = HumanMessagePromptTemplate.from_template("{user_query}")
+    human_prompt = HumanMessagePromptTemplate.from_template("{user_query}")
     chat_prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
 
     complete_prompt = chat_prompt.format_prompt(
-        incident_ids="\n".join(incident_ids),  # Format incident IDs as a list
+        incident_details=json.dumps(incident_details, indent=2),
         batch_faiss_results=json.dumps(batch_faiss_results, indent=2),
         historical_faiss_results=json.dumps(historical_faiss_results, indent=2),
+        format_instructions=parser.get_format_instructions(),
         user_query=query
     ).to_messages()
     
@@ -87,19 +120,24 @@ Let's start with a small sample to test the system:
     b.  Identify Relevant CVEs: Determine which CVEs are potentially relevant based on the incident context and affected software/hardware, using LLM reasoning and potentially querying data sources. 
     c.  Prioritize CVEs: Assess the risk and impact of relevant CVEs in the context of the specific incident, going beyond standard scores like CVSS. 
     d.  Generate Analysis: Provide a brief, human-readable explanation of why certain CVEs are prioritized, linking them back to the incident details.
-3. Finally, and most importantly, append an organized list of Incident IDs, brief descriptions, related CVEs with confidence levels, and your assessment on the actual risk level of the incident on a level between 1 and 10.
-Format this as a JSON object with the following keys:
+3. Finally, and most importantly, provide an organized list of all analyzed incidents in the following format:
 {
-    "incident_id": "The ID of the incident that caused the error",
-    "incident_summary": "A brief summary of the incident",
-    "cve_ids": {
-        "cve_id": "The CVE IDs that is related to the incident",
-        "cve_summary": "A brief summary of the CVE and its relalation to the incident",
-        "cve_relevance": "The estimated relevance level of the CVE match (0.0-1.0)",
-        "cve_risk_level": "The risk level of the CVE on a scale of (0.0-1.0)"
-    },
-    "incident_risk_level": "The risk level of the incident (0.0-1.0)"
-    "incident_risk_level_explanation": "An explanation, somewhat briefly, of the rationale for the risk level assessment for each of the incidents."
+    "incidents": [
+        {
+            "incident_id": "The ID of the incident that caused the error",
+            "incident_summary": "A brief summary of the incident",
+            "cve_ids": [
+                {
+                    "cve_id": "The CVE ID that is related to the incident",
+                    "cve_summary": "A brief summary of the CVE and its relation to the incident",
+                    "cve_relevance": "The estimated relevance level of the CVE match (0.0-1.0)",
+                    "cve_risk_level": "The risk level of the CVE on a scale of (0.0-1.0)"
+                }
+            ],
+            "incident_risk_level": "The risk level of the incident (0.0-1.0)",
+            "incident_risk_level_explanation": "An explanation of the rationale for the risk level assessment"
+        }
+    ]
 }
 
 Note: If any tools return an error, please give the exact response, the exception details, and any additional specific details of the error and the tool in question. Format this as a JSON object with the following keys:
@@ -159,13 +197,10 @@ async def ask_mcp_agent(server_parameters, query):
     logger.info("Starting MCP agent...")
     async with stdio_client(server_parameters) as (read, write):
         logger.info("Server connection established!")
-        # Initialize client session for communication
         async with ClientSession(
             read, 
             write, 
-            read_timeout_seconds=timedelta(seconds=15),
-            message_handler=lambda msg: logger.debug(f"Received message: {msg}"),
-            logging_callback=lambda msg: logger.debug(f"Sending message: {msg}")
+            read_timeout_seconds=timedelta(seconds=15)
         ) as session:
             logger.info("Initializing client session...")
             await session.initialize()
@@ -212,18 +247,20 @@ async def ask_mcp_agent(server_parameters, query):
             # Save the analysis if it's a valid JSON response
             try:
                 if isinstance(final_message.content, str):
-                    # Try to parse as JSON
-                    analysis = json.loads(final_message.content)
-                    if "incident_id" in analysis:
-                        await save_incident_analysis(analysis["incident_id"], final_message.content)
-                        # Get the incident data
-                        incident = get_incident(analysis["incident_id"])
-                        if incident:
-                            await add_incident_to_history(incident, analysis)
-            except json.JSONDecodeError:
-                logger.warning("Final message is not valid JSON, skipping save")
+                    # Parse the response using our Pydantic model
+                    analysis_list = parser.parse(final_message.content)
+                    # Save each incident analysis
+                    for analysis in analysis_list.incidents:
+                        # Save the individual incident analysis
+                        await save_incident_analysis(analysis.incident_id, analysis.model_dump())
+                        # Get the incident data and add to history
+                        incident = get_incident(analysis.incident_id)
+                        if incident.get("found"):
+                            await add_incident_to_history(incident["incident_data"], analysis.model_dump())
+                        logger.info(f"Successfully processed and saved analysis for incident {analysis.incident_id}")
             except Exception as e:
-                logger.error(f"Error saving analysis: {str(e)}")
+                logger.error(f"Error processing analysis: {str(e)}")
+                logger.debug(f"Raw response content: {final_message.content}")
             
             # Log results and return message and accompanying metadata
             logger.info("Received final agent message!")
@@ -236,12 +273,8 @@ async def ask_mcp_agent(server_parameters, query):
 @timing_metric
 @cache_result(ttl_seconds=3600)
 async def main():
-    server_parameters = StdioServerParameters(
-        command="python",
-        args=[MCP_SERVER_NAME],
-    )
     final_message, response = await ask_mcp_agent(server_parameters, query)                              
     logger.info(f"Agent Analysis (final message):\n{final_message.content}")
 
 if __name__ == "__main__":
-  asyncio.run(main())
+    asyncio.run(main())
