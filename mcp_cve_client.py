@@ -193,10 +193,11 @@ async def ask_agent(agent, query: str):
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
-async def ask_mcp_agent(server_parameters, query):
+async def ask_mcp_agent(server_parameters, query, start_index: int = 0, batch_size: int = 5):
     logger.info("Starting MCP agent...")
     async with stdio_client(server_parameters) as (read, write):
         logger.info("Server connection established!")
+        # Initialize client session for communication
         async with ClientSession(
             read, 
             write, 
@@ -215,7 +216,11 @@ async def ask_mcp_agent(server_parameters, query):
             logger.info(f"Agent {agent.name} created and ready to process requests!")
             
             logger.info("Querying KEV/NVD indexes...")
-            batch_faiss_results = batch_match_incident_to_cves()
+            batch_faiss_results = batch_match_incident_to_cves(
+                batch_size=batch_size,
+                start_index=start_index,
+                top_k=3
+            )
             logger.info("KEV/NVD indexes queried successfully!")
             logger.debug(f"Batch FAISS results: {batch_faiss_results}")
 
@@ -262,19 +267,21 @@ async def ask_mcp_agent(server_parameters, query):
                 logger.error(f"Error processing analysis: {str(e)}")
                 logger.debug(f"Raw response content: {final_message.content}")
             
-            # Log results and return message and accompanying metadata
-            logger.info("Received final agent message!")
+            # Log results
+            logger.info("Processing complete!")
             logger.debug("Response messages metadata: %s", 
                  [(m.id, getattr(m, "additional_kwargs", {})) 
                   for m in response["messages"]])
 
-            return final_message, response
-
 @timing_metric
 @cache_result(ttl_seconds=3600)
 async def main():
-    final_message, response = await ask_mcp_agent(server_parameters, query)                              
-    logger.info(f"Agent Analysis (final message):\n{final_message.content}")
+    if server_parameters is None:
+        server_parameters = StdioServerParameters(
+            command="python",
+            args=[MCP_SERVER_NAME]
+        )
+    await ask_mcp_agent(server_parameters, query, start_index=0, batch_size=5)
 
 if __name__ == "__main__":
     asyncio.run(main())
