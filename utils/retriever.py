@@ -10,6 +10,7 @@ from utils.flatteners import flatten_incident
 from utils.logging_utils import setup_logger
 from langchain.schema import Document
 from typing import Any, Dict, List
+import asyncio
 
 BASE_DIR = Path(__file__).parent.parent        # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
@@ -18,6 +19,7 @@ NVD_FAISS = None
 INCIDENT_HISTORY_FAISS = None
 INCIDENT_HISTORY_FAISS = None
 embeddings = None
+faiss_write_lock = asyncio.Lock()
 
 logger = setup_logger("retriever")
 # =========================================================================
@@ -1057,6 +1059,21 @@ def get_similar_incidents_with_analyses(
         }
     }
 
+async def write_to_faiss(documents: list[Document], index: FAISS=INCIDENT_HISTORY_FAISS, index_location: str="data/vectorstore/historical_incidents"):
+    """
+    Safely write new documents to a FAISS index using async lock.
+    
+    Args:
+        index (FAISS): The FAISS index instance.
+        index_location (str): Directory where the index is stored.
+        documents (list): List of LangChain Document objects to add.
+    """
+    logger.info(f"Adding {len(documents)} documents to FAISS index at {index_location}...")
+    async with faiss_write_lock:
+        index.add_documents(documents)
+        index.save_local(index_location)
+        logger.info(f"Successfully wrote {len(documents)} documents to FAISS index at {index_location}!")
+
 @timing_metric
 async def add_incident_to_history(incident: dict, analysis: dict):
     """
@@ -1086,15 +1103,17 @@ async def add_incident_to_history(incident: dict, analysis: dict):
         # Add to existing FAISS index
         global INCIDENT_HISTORY_FAISS
         if INCIDENT_HISTORY_FAISS is None:
-            logger.info("Dummy analyses index not initialized, initializing now")
+            logger.info("Historical incident index not initialized, initializing now")
             initialize_indexes()
-            
-        INCIDENT_HISTORY_FAISS.add_documents([doc])
+
+        # Write to FAISS using async lock to handle potential concurrency issues
+        await write_to_faiss(
+            index=INCIDENT_HISTORY_FAISS,
+            index_location="data/vectorstore/historical_incidents",
+            documents=[doc]
+        )
         
-        # Save the updated index
-        INCIDENT_HISTORY_FAISS.save_local("data/vectorstore/dummy_incidents")
-        
-        logger.info(f"Added incident {incident['incident_id']} to history index")
+        logger.info(f"Added incident {incident['incident_id']} to history index!")
         
     except Exception as e:
         logger.error(f"Error adding incident to history: {str(e)}")
