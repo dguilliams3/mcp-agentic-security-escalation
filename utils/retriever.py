@@ -11,6 +11,12 @@ from utils.logging_utils import setup_logger
 
 BASE_DIR = Path(__file__).parent.parent        # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
+KEV_FAISS = None
+NVD_FAISS = None
+INCIDENT_ANALYSIS_HISTORY_FAISS = None
+DUMMY_ANALYSES_FAISS = None
+embeddings = None
+
 logger = setup_logger("retriever")
 # =========================================================================
 # INITIALIZATION AND EMBEDDING FUNCTIONS
@@ -53,6 +59,7 @@ def initialize_indexes():
     - KEV (Known Exploited Vulnerabilities)
     - NVD (National Vulnerability Database)
     - Incident Analysis History
+    - Dummy Analyses
 
     The function ensures that:
     - Embeddings are initialized if not already done
@@ -60,14 +67,14 @@ def initialize_indexes():
     - Dangerous deserialization is allowed for loading pre-built indexes
 
     Note:
-        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS
+        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS, DUMMY_ANALYSES_FAISS
         - Requires OpenAI embeddings to be initialized first
         - Uses local vector store files in the 'data/vectorstore' directory
 
     Raises:
         Various exceptions if index loading fails
     """
-    global KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS
+    global KEV_FAISS, NVD_FAISS, INCIDENT_ANALYSIS_HISTORY_FAISS, DUMMY_ANALYSES_FAISS
     if embeddings is None:
         initialize_embeddings()
 
@@ -76,6 +83,8 @@ def initialize_indexes():
     NVD_FAISS = FAISS.load_local(DATA_DIR / "nvd", embeddings,
                               allow_dangerous_deserialization=True)
     INCIDENT_ANALYSIS_HISTORY_FAISS = FAISS.load_local(DATA_DIR / "incident_analysis_history", embeddings,
+                               allow_dangerous_deserialization=True)
+    DUMMY_ANALYSES_FAISS = FAISS.load_local(DATA_DIR / "dummy_analyses", embeddings,
                                allow_dangerous_deserialization=True)
 
 # =========================================================================
@@ -757,6 +766,227 @@ def semantic_search_cves(
             query, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
         )
     return out
+
+# =========================================================================
+# DUMMY INCIDENT ANALYSES FUNCTIONS
+# =========================================================================
+# Search and retrieve similar incidents from dummy analyses
+
+@timing_metric
+@cache_result(ttl_seconds=3600)
+def search_similar_incidents(
+    incident: dict,
+    k: int = 5,
+    use_mmr: bool = True,
+    lambda_mult: float = 0.7
+) -> List[Dict]:
+    """
+    Search for similar incidents in the dummy analyses index.
+    
+    This function takes an incident, finds similar ones in our dummy analyses,
+    and returns their metadata including risk levels and CVE associations.
+    
+    Args:
+        incident (dict): The incident to find similar ones for
+        k (int, optional): Number of top matches to return. Defaults to 5.
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+            for more diverse results. Defaults to True.
+        lambda_mult (float, optional): Diversity control for MMR search. 
+            Higher values prioritize relevance, lower values prioritize diversity. 
+            Defaults to 0.7.
+    
+    Returns:
+        List[Dict]: A list of similar incidents, each containing:
+            - incident_id: ID of the similar incident
+            - incident_summary: Summary of the incident
+            - incident_risk_level: Risk level assigned to the incident
+            - cve_ids: Associated CVEs and their details
+            - similarity: Similarity score with the query incident
+    
+    Example:
+        similar = search_similar_incidents(incident_data)
+        for match in similar:
+            print(f"Similar incident {match['incident_id']} with risk level {match['incident_risk_level']}")
+    """
+    logger.info(f"Searching for similar incidents with k={k}, MMR={use_mmr}")
+    
+    # Initialize indexes if needed
+    if DUMMY_ANALYSES_FAISS is None:
+        logger.info("Dummy analyses index not initialized, initializing now")
+        initialize_indexes()
+    
+    # Flatten the incident for searching
+    query_text = flatten_incident(incident)
+    
+    # Perform the search
+    if use_mmr:
+        # MMR path: pull doc+score
+        hits = DUMMY_ANALYSES_FAISS.max_marginal_relevance_search_with_score_by_vector(
+            embeddings.embed_query(query_text),
+            k=k,
+            fetch_k=2*k,
+            lambda_mult=lambda_mult,
+        )
+    else:
+        # regular similarity
+        hits = DUMMY_ANALYSES_FAISS.similarity_search_with_score(query_text, k=k)
+
+    # Format the results
+    out = []
+    for doc, score in hits:
+        m = doc.metadata.copy()
+        m["similarity"] = float(score)
+        out.append(m)
+    
+    logger.info(f"Found {len(out)} similar incidents")
+    return out
+
+@timing_metric
+@cache_result(ttl_seconds=3600)
+def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
+    """
+    Retrieve full analyses for a list of incident IDs from the dummy analyses database.
+    
+    Args:
+        incident_ids (List[str]): List of incident IDs to retrieve analyses for
+        
+    Returns:
+        Dict[str, Dict]: Dictionary mapping incident IDs to their full analyses
+            - Keys are incident IDs
+            - Values are the complete analysis objects including:
+                * incident_summary
+                * cve_ids and their details
+                * incident_risk_level
+                * incident_risk_level_explanation
+    
+    Example:
+        analyses = get_dummy_incident_analyses(["INC-2024-05-12-005", "INC-2024-07-01-007"])
+        for incident_id, analysis in analyses.items():
+            print(f"Analysis for {incident_id}: {analysis['incident_risk_level']}")
+    """
+    try:
+        data_file = Path("data/dummy_agent_incident_analyses.json")
+        with open(data_file, 'r') as f:
+            all_analyses = json.load(f)
+        
+        # Create a lookup dictionary for faster access
+        analyses_lookup = {analysis["incident_id"]: analysis for analysis in all_analyses}
+        
+        # Retrieve requested analyses
+        requested_analyses = {}
+        for incident_id in incident_ids:
+            if incident_id in analyses_lookup:
+                requested_analyses[incident_id] = analyses_lookup[incident_id]
+            else:
+                logger.warning(f"Analysis not found for incident {incident_id}")
+                requested_analyses[incident_id] = {
+                    "error": "Analysis not found",
+                    "incident_id": incident_id
+                }
+        
+        return requested_analyses
+        
+    except FileNotFoundError:
+        logger.error("Dummy analyses database not found")
+        return {incident_id: {"error": "Database not found"} for incident_id in incident_ids}
+    except Exception as e:
+        logger.error(f"Error retrieving analyses: {str(e)}")
+        return {incident_id: {"error": str(e)} for incident_id in incident_ids}
+
+@timing_metric
+def get_similar_incidents_with_analyses(
+    incident: dict,
+    k: int = 5,
+    use_mmr: bool = True,
+    lambda_mult: float = 0.7,
+    incident_fields: List[str] = ["incident_id", "similarity"],
+    analysis_fields: List[str] = ["incident_risk_level", "incident_summary", "cve_ids"]
+) -> Dict[str, Any]:
+    """
+    Find similar incidents and retrieve their full analyses.
+    
+    This function combines semantic search with analysis retrieval to provide
+    a complete view of similar incidents and their historical analyses.
+    
+    Args:
+        incident (dict): The incident to find similar ones for
+        k (int, optional): Number of top matches to return. Defaults to 5.
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+            for more diverse results. Defaults to True.
+        lambda_mult (float, optional): Diversity control for MMR search. 
+            Higher values prioritize relevance, lower values prioritize diversity. 
+            Defaults to 0.7.
+        incident_fields (List[str], optional): Fields to include from similar incidents.
+            Defaults to ["incident_id", "similarity"].
+            Available fields: incident_id, similarity, incident_summary, incident_risk_level
+        analysis_fields (List[str], optional): Fields to include from analyses.
+            Defaults to ["incident_risk_level", "incident_summary", "cve_ids"].
+            Available fields: incident_summary, cve_ids, incident_risk_level, 
+            incident_risk_level_explanation
+    
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - 'similar_incidents': List of similar incidents with selected fields
+            - 'analyses': Dictionary mapping incident IDs to their selected analysis fields
+            - 'metadata': Information about the search results
+    
+    Example:
+        # Get only risk levels and summaries
+        results = get_similar_incidents_with_analyses(
+            incident_data,
+            incident_fields=["incident_id", "similarity"],
+            analysis_fields=["incident_risk_level", "incident_summary"]
+        )
+    """
+    # First find similar incidents
+    similar_incidents = search_similar_incidents(
+        incident=incident,
+        k=k,
+        use_mmr=use_mmr,
+        lambda_mult=lambda_mult
+    )
+    
+    # Filter similar incidents to requested fields
+    filtered_incidents = []
+    for inc in similar_incidents:
+        filtered_inc = {field: inc.get(field) for field in incident_fields if field in inc}
+        filtered_incidents.append(filtered_inc)
+    
+    # Extract incident IDs from the results
+    incident_ids = [inc["incident_id"] for inc in filtered_incidents]
+    
+    # Get full analyses for these incidents
+    full_analyses = get_dummy_incident_analyses(incident_ids)
+    
+    # Filter analyses to requested fields
+    filtered_analyses = {}
+    for incident_id, analysis in full_analyses.items():
+        if "error" in analysis:
+            filtered_analyses[incident_id] = analysis
+        else:
+            filtered_analyses[incident_id] = {
+                field: analysis.get(field) 
+                for field in analysis_fields 
+                if field in analysis
+            }
+    
+    return {
+        "similar_incidents": filtered_incidents,
+        "analyses": filtered_analyses,
+        "metadata": {
+            "num_incidents_found": len(filtered_incidents),
+            "num_analyses_retrieved": len(filtered_analyses),
+            "search_params": {
+                "k": k,
+                "use_mmr": use_mmr,
+                "lambda_mult": lambda_mult
+            },
+            "fields_retrieved": {
+                "incident_fields": incident_fields,
+                "analysis_fields": analysis_fields
+            }
+        }
+    }
 
 # =========================================================================
 # MAIN EXECUTION BLOCK
