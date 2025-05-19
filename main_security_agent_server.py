@@ -154,13 +154,12 @@ async def ask_agent(agent, query: str):
     final_message = next(msg for msg in reversed(response["messages"])
                         if isinstance(msg, AIMessage) and msg.content)
     logger.debug(f"Final message: {final_message}")
-    logger.debug(f"Full ainvoke response data: {response}")
     # Return both the final message and the response json with metadata
     return final_message, response
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
-async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, batch_size: int = 5, request_id: str = None):
+async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch_size: int = 5, request_id: str = None):
     start_ts = time.perf_counter()
     error_count = 0
     try:
@@ -234,7 +233,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
                             # Note: We wouldn't need this in a larger system, we'd simply use the below writing to a database/datastore instead,
                             # but we keep it here for the sake of the demo and to show how we'd do it in a larger system.
                             await save_incident_analysis(analysis.incident_id, analysis.model_dump())
-           
+
                             # Get the incident data and add to historical data FAISS index for future use
                             logger.debug(f"Getting incident data for incident_id: {analysis.incident_id}...")
                             incident = get_incident(analysis.incident_id)
@@ -277,23 +276,18 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
         logger.debug(f"Total duration: {duration:.2f} seconds (request_id={request_id})")
         logger.info(f"Total errors: {error_count}")
 
-        # Extract token usage from the agent's response
+        # Capture total token usage
         usage_metrics = {}
-        if "response" in locals():
-            if "usage_metadata" in response:
-                logger.info("Usage metadata found in response!")
-                usage_metadata = response.get("usage_metadata", {})
-                usage_metrics = {
-                    "input_tokens":  usage_metadata.get("input_tokens"),
-                    "output_tokens": usage_metadata.get("output_tokens"),
-                    "total_tokens":  usage_metadata.get("total_tokens"),
-                }
-                logger.debug(f"Usage metadata: {usage_metrics}")
-            else:
-                logger.debug("response found in locals, but usage metadata not found.")
-                logger.debug(f"For debugging, response: {response}")
-        else:
-            logger.debug("No response found in locals.")
+        if "final_message" in locals():
+            usage_metadata = final_message.usage_metadata
+            usage_metrics = {
+                "input_tokens": usage_metadata.get("input_tokens"),
+                "output_tokens": usage_metadata.get("output_tokens"),
+                "total_tokens": usage_metadata.get("total_tokens"),
+                "input_token_details": usage_metadata.get("input_token_details"),
+                "output_token_details": usage_metadata.get("output_token_details")
+            }
+        logger.debug(f"Usage metrics: {usage_metrics}")
 
         # Pull tool names out of your ToolMessage calls
         tools = []
@@ -309,7 +303,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
             request_id     = request_id,
             start_index    = start_index,
             batch_size     = batch_size,
-            usage_metrics          = usage_metrics,
+            usage_metrics  = usage_metrics,
             tools          = tools,
             duration       = duration,
             error_count    = error_count
@@ -364,6 +358,13 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
             detail=f"Internal server error, check server logs (request_id={request.request_id})"
         )
 
+@app.get("/health", tags=["Internal"])
+async def health_check():
+    """
+    Simple health check endpoint.
+    Returns 200 OK with a basic status payload.
+    """
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
