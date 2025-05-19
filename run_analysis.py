@@ -29,7 +29,7 @@ async def analyze_batch(client: httpx.AsyncClient, start: int) -> dict:
         "openai_api_key": OPENAI_KEY,
         "model_name":     MODEL_NAME
     }
-    resp = await client.post(API_URL, json=payload, timeout=60.0)
+    resp = await client.post(API_URL, json=payload, timeout=300.0) # Typically takes 2-3 minutes, but hedging our bets
     resp.raise_for_status()
     return {"start": start, "result": resp.json()}
 
@@ -43,10 +43,15 @@ async def main():
                 try:
                     out = await analyze_batch(client, start_index)
                     print(f"✅ Batch @ {start_index}: {out['result']}")
-                except httpx.ConnectError:
-                    print(f"❌ Batch @ {start_index} failed: could not connect to API (is the server running?)")
+                except httpx.ReadTimeout:
+                    print(f"⏳ Batch @ {start_index} timed out waiting for response – check DB for results")
+                    return {"start": start_index, "result": None}
+                except httpx.HTTPStatusError as e:
+                    print(f"❌ Batch @ {start_index} returned HTTP {e.response.status_code}")
+                    return {"start": start_index, "error": str(e)}
                 except Exception as e:
                     print(f"❌ Batch @ {start_index} failed:", e)
+                    return {"start": start_index, "error": str(e)}
 
         # schedule all tasks at once
         tasks = [asyncio.create_task(guarded(start_index)) for start_index in start_indexes]
