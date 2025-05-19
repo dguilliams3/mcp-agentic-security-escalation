@@ -18,7 +18,6 @@ DATA_DIR = BASE_DIR / "data" / "vectorstore"
 KEV_FAISS = None
 NVD_FAISS = None
 INCIDENT_HISTORY_FAISS = None
-INCIDENT_HISTORY_FAISS = None
 embeddings = None
 faiss_write_lock = asyncio.Lock()
 
