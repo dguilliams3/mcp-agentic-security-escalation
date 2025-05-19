@@ -154,7 +154,7 @@ def _search(
     out: List[Dict] = []
     for doc, score in pairs:
         meta = doc.metadata.copy()
-        meta["similarity"] = float(score)
+        meta["variance"] = float(score)
         # Remove newlines, replace multiple spaces with single space, and truncate
         meta["preview"] = ' '.join(doc.page_content.replace('\n', ' ').split())[:120]
         out.append(meta)
@@ -218,7 +218,7 @@ def search_text(
     out = []
     for doc, score in hits:
         m = doc.metadata.copy()
-        m["similarity"] = score
+        m["variance"] = score
         out.append(m)
     return out
 
@@ -403,7 +403,7 @@ def semantic_match_incident(
 
     # First search KEV database
     kev_hits = semantic_match_incident_kev(incident, k_kev, use_mmr, lambda_mult)
-    best_kev_score = kev_hits[0]["similarity"] if kev_hits else 1.0
+    best_kev_score = kev_hits[0]["variance"] if kev_hits else 1.0
 
     logger.info(f"Best KEV match score: {best_kev_score:.3f}")
 
@@ -775,7 +775,7 @@ def search_incident_analysis_history(
     out = []
     for doc, score in hits:
         m = doc.metadata.copy()
-        m["similarity"] = float(score)
+        m["variance"] = float(score)
         out.append(m)
 
     logger.info(f"Found {len(out)} similar incidents")
@@ -907,7 +907,7 @@ def search_similar_incidents(
     out = []
     for doc, score in hits:
         m = doc.metadata.copy()
-        m["similarity"] = float(score)
+        m["variance"] = float(score)
         out.append(m)
 
     logger.info(f"Found {len(out)} similar incidents")
@@ -971,7 +971,7 @@ def get_similar_incidents_with_analyses(
     k: int = 5,
     use_mmr: bool = True,
     lambda_mult: float = 0.7,
-    incident_fields: List[str] = ["incident_id", "similarity"],
+    incident_fields: List[str] = ["incident_id", "variance"],
     analysis_fields: List[str] = ["incident_risk_level", "incident_summary", "cve_ids"]
 ) -> Dict[str, Any]:
     """
@@ -989,7 +989,7 @@ def get_similar_incidents_with_analyses(
             Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
         incident_fields (List[str], optional): Fields to include from similar incidents.
-            Defaults to ["incident_id", "similarity"].
+            Defaults to ["incident_id", "variance"].
             Available fields: incident_id, similarity, incident_summary, incident_risk_level
         analysis_fields (List[str], optional): Fields to include from analyses.
             Defaults to ["incident_risk_level", "incident_summary", "cve_ids"].
@@ -1006,7 +1006,7 @@ def get_similar_incidents_with_analyses(
         # Get only risk levels and summaries
         results = get_similar_incidents_with_analyses(
             incident_data,
-            incident_fields=["incident_id", "similarity"],
+            incident_fields=["incident_id", "variance"],
             analysis_fields=["incident_risk_level", "incident_summary"]
         )
     """
