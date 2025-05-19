@@ -3,7 +3,7 @@ import asyncio, json, os
 from dotenv import load_dotenv
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
-from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
 # LangChain & MCP
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -24,6 +24,7 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 # Local imports
 from utils.decorators import timing_metric, cache_result
 from utils.logging_utils import setup_logger
+from utils.pydantic_utils import IncidentAnalysisList, AnalysisRequest, CVEInfo, IncidentAnalysis
 from utils.retriever import (
     add_incident_to_history, 
     get_incident, 
@@ -32,39 +33,60 @@ from utils.retriever import (
     batch_match_incident_to_cves,
     batch_get_historical_context
 )
+from utils.datastore_utils import init_db, save_incident_and_analysis_to_db
 
-# Pydantic models for structured output
-class CVEInfo(BaseModel):
-    cve_id: str = Field(description="The CVE ID that is related to the incident")
-    cve_summary: str = Field(description="A brief summary of the CVE and its relation to the incident")
-    cve_relevance: float = Field(description="The estimated relevance level of the CVE match (0.0-1.0)")
-    cve_risk_level: float = Field(description="The risk level of the CVE on a scale of (0.0-1.0)")
-
-class IncidentAnalysis(BaseModel):
-    incident_id: str = Field(description="The ID of the incident that caused the error")
-    incident_summary: str = Field(description="A brief summary of the incident")
-    cve_ids: List[CVEInfo] = Field(description="List of related CVEs and their details")
-    incident_risk_level: float = Field(description="The risk level of the incident (0.0-1.0)")
-    incident_risk_level_explanation: str = Field(description="An explanation of the rationale for the risk level assessment")
-
-class IncidentAnalysisList(BaseModel):
-    incidents: List[IncidentAnalysis] = Field(description="List of incident analyses")
+# +++ FastAPI Imports +++
+from fastapi import FastAPI, HTTPException  
+logger = setup_logger()  # Optional: pass custom name or log_file
+load_dotenv()  # Load environment variables from .env file
 
 # Initialize parser
 parser = PydanticOutputParser(pydantic_object=IncidentAnalysisList)
 
-load_dotenv()  # Load environment variables from .env file
-logger = setup_logger()  # Optional: pass custom name or log_file
-
 # Initialize embeddings
-logger.info("Initializing embeddings...")
-embeddings = OpenAIEmbeddings()
+# logger.info("Initializing embeddings...")
+# embeddings = OpenAIEmbeddings()
 
 # Input variables (MCP_SERVER_NAME, model_name, query)
 MCP_SERVER_NAME = os.getenv("MCP_SERVER_NAME", "mcp_cve_server.py")
-model_name = os.getenv("MODEL_NAME", "gpt-4o-mini")
+# model_name = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
-# 1) define a template with two variables
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Startup
+    global logger, embeddings, server_parameters, MCP_SERVER_NAME
+    
+    load_dotenv()
+    logger = setup_logger()
+    logger.info("FastAPI application starting up...")
+    
+    logger.info("Initializing embeddings...")
+    embeddings = OpenAIEmbeddings()
+
+    init_db()
+    logger.info("Configuring server parameters...")
+    server_parameters = StdioServerParameters(
+        command="python",
+        args=[MCP_SERVER_NAME],
+    )
+    logger.info("FastAPI application startup initialization complete.")
+    
+    yield  # This is where the application runs
+    
+    # Shutdown (if needed)
+    logger.info("Shutting down...")
+
+# Update the FastAPI app initialization to use the lifespan
+app = FastAPI(title="MCP CVE Analysis Agent API", lifespan=lifespan)
+
+# We want our templates to save the LLM time and tokens by pre-processing and providing data we assume will always be relevant including:
+# 1) Incident Details: The raw JSON of the incidents it's being asked to analyze
+#
+# 2) Batch FAISS matches (KEV/NVD): The results of semantic searching the KEV/NVD indexes for the incidents
+#       Note: The agent still has access to query the indexes by incident or by custom strings if it needs more information or to check for more matches.
+#
+# 3) Historical FAISS‐anchoring context: The top results of searching for similar incidents in the past and the LLM's decision/ranking on those incidents.
+#       Note: This will help it normalize the severity rankings and provide a more accurate assessment of the incidents.
 SYSTEM_TMPL = """
 You are a CVE‐analysis assistant. Analyze the following incidents and provide structured analysis.
 
@@ -160,21 +182,21 @@ debug_query = """
 # """
 
 # Get OpenAI API key from environment variables
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables. Please check your .env file.")
+# openai_api_key = os.getenv("OPENAI_API_KEY")
+# if not openai_api_key:
+#     raise ValueError("OPENAI_API_KEY not found in environment variables. Please check your .env file.")
 
-logger.info("OpenAI API key loaded successfully")
+# logger.info("OpenAI API key loaded successfully")
 
-# Initialize ChatGPT model with specific version
-logger.info(f"Initializing Model {model_name}...")
-model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
+# # Initialize ChatGPT model with specific version
+# logger.info(f"Initializing Model {model_name}...")
+# model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
 
-# Configure server parameters for the Python subprocess
-server_parameters = StdioServerParameters(
-    command="python",
-    args=[MCP_SERVER_NAME],
-)
+# # Configure server parameters for the Python subprocess
+# server_parameters = StdioServerParameters(
+#     command="python",
+#     args=[MCP_SERVER_NAME],
+# )
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
@@ -193,7 +215,7 @@ async def ask_agent(agent, query: str):
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
-async def ask_mcp_agent(server_parameters, query, start_index: int = 0, batch_size: int = 5):
+async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, batch_size: int = 5, request_id: str = None):
     logger.info("Starting MCP agent...")
     async with stdio_client(server_parameters) as (read, write):
         logger.info("Server connection established!")
@@ -254,15 +276,22 @@ async def ask_mcp_agent(server_parameters, query, start_index: int = 0, batch_si
                 if isinstance(final_message.content, str):
                     # Parse the response using our Pydantic model
                     analysis_list = parser.parse(final_message.content)
+                    
                     # Save each incident analysis
                     for analysis in analysis_list.incidents:
-                        # Save the individual incident analysis
+                        # Save the individual incident analysis.
+                        # Note: We wouldn't need this in a larger system, we'd simply use the below writing to a database/datastore instead,
+                        # but we keep it here for the sake of the demo and to show how we'd do it in a larger system.
                         await save_incident_analysis(analysis.incident_id, analysis.model_dump())
-                        # Get the incident data and add to history
+                        
+                        # Get the incident data and add to historical data FAISS index for future use
                         incident = get_incident(analysis.incident_id)
                         if incident.get("found"):
-                            await add_incident_to_history(incident["incident_data"], analysis.model_dump())
-                        logger.info(f"Successfully processed and saved analysis for incident {analysis.incident_id}")
+                            add_incident_to_history(incident, analysis.model_dump())
+                        
+                        # Here, we save both the incident and analysis to a database for retrieval, lineage, reporting, etc. with the request_id as the primary key
+                        logger.info(f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {analysis.incident_id}...")
+                        save_incident_and_analysis_to_db(request_id, analysis.incident_id, model.name, incident, analysis.model_dump())
             except Exception as e:
                 logger.error(f"Error processing analysis: {str(e)}")
                 logger.debug(f"Raw response content: {final_message.content}")
@@ -275,13 +304,52 @@ async def ask_mcp_agent(server_parameters, query, start_index: int = 0, batch_si
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
-async def main():
-    if server_parameters is None:
-        server_parameters = StdioServerParameters(
-            command="python",
-            args=[MCP_SERVER_NAME]
+@app.post("/analyze_incidents")
+async def analyze_incidents(request: AnalysisRequest):
+    try:
+        if server_parameters is None:
+            server_parameters = StdioServerParameters(
+                command="python",
+                args=[MCP_SERVER_NAME]
+            )
+        
+        model_name = request.model_name
+        logger.info(f"Initializing Model {model_name}...")
+
+        try: 
+            openai_api_key = request.openai_api_key
+            if not openai_api_key:
+                openai_api_key = os.getenv("OPENAI_API_KEY","")
+                if not openai_api_key:
+                    raise HTTPException(status_code=500, detail="OPENAI_API_KEY not found in environment variables.")
+            
+            model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
+        except Exception as e:
+            logger.error(f"Error initializing model: {e}")
+            raise HTTPException(status_code=500, detail=f"Error initializing model: {e}")
+
+        await ask_mcp_agent(
+            server_parameters=server_parameters,
+            model=model,
+            query=query,
+            start_index=request.start_index,
+            batch_size=request.batch_size
         )
-    await ask_mcp_agent(server_parameters, query, start_index=0, batch_size=5)
+        
+        return {
+            "status": "success",
+            "request_id": request.request_id,
+            "message": f"Successfully processed {request.batch_size} incidents starting at index {request.start_index}"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "request_id": request.request_id
+            }
+        )
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
