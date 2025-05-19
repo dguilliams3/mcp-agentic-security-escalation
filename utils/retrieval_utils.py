@@ -1,10 +1,11 @@
-# utils/retriever.py  (patched)
+# utils/retrieval_utils.py  (patched)
 import json
 import logging, os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from utils.datastore_utils import get_incident_analyses
 from utils.decorators import cache_result, timing_metric
 from utils.flatteners import flatten_incident
 from utils.logging_utils import setup_logger
@@ -21,7 +22,7 @@ INCIDENT_HISTORY_FAISS = None
 embeddings = None
 faiss_write_lock = asyncio.Lock()
 
-logger = setup_logger("retriever")
+logger = setup_logger("retrieval_utils")
 # =========================================================================
 # INITIALIZATION AND EMBEDDING FUNCTIONS
 # =========================================================================
@@ -852,9 +853,9 @@ def search_similar_incidents(
     lambda_mult: float = 0.7
 ) -> List[Dict]:
     """
-    Search for similar incidents in the dummy analyses index.
+    Search for similar incidents in the historical incident analyses index.
     
-    This function takes an incident, finds similar ones in our dummy analyses,
+    This function takes an incident, finds similar ones in the historical incident analyses index,
     and returns their metadata including risk levels and CVE associations.
     
     Args:
@@ -883,7 +884,7 @@ def search_similar_incidents(
     
     # Initialize indexes if needed
     if INCIDENT_HISTORY_FAISS is None:
-        logger.info("Historical analyses index not initialized, initializing now")
+        logger.debug("Historical analyses index not initialized, initializing now")
         initialize_indexes()
     
     # Flatten the incident for searching
@@ -1027,19 +1028,13 @@ def get_similar_incidents_with_analyses(
     incident_ids = [inc["incident_id"] for inc in filtered_incidents]
     
     # Get full analyses for these incidents
-    full_analyses = get_dummy_incident_analyses(incident_ids)
+    full_analyses = get_incident_analyses(incident_ids)
     
     # Filter analyses to requested fields
     filtered_analyses = {}
-    for incident_id, analysis in full_analyses.items():
-        if "error" in analysis:
-            filtered_analyses[incident_id] = analysis
-        else:
-            filtered_analyses[incident_id] = {
-                field: analysis.get(field) 
-                for field in analysis_fields 
-                if field in analysis
-            }
+    for analysis in full_analyses:
+        incident_id = analysis['incident_id']
+        filtered_analyses[incident_id] = analysis
     
     return {
         "similar_incidents": filtered_incidents,
@@ -1120,49 +1115,54 @@ async def add_incident_to_history(incident: dict, analysis: dict):
         raise
 
 @timing_metric
-async def save_incident_analysis(incident_id: str, llm_response: str):
+async def save_incident_analysis(incident_id: str, llm_response: Any):
     """
     Parse and save the LLM's analysis response for future lookup.
-    
-    Args:
-        incident_id (str): The ID of the incident being analyzed
-        llm_response (str): The raw response from the LLM
+    Accepts either a JSON string or a Python dict.
     """
     try:
-        # Parse the JSON from the LLM response
-        analysis = json.loads(llm_response)
-        
+        # Normalize into a dict
+        logger.debug(f"Normalizing LLM response into a dict for incident_id: {incident_id}...")
+        if isinstance(llm_response, str):
+            analysis = json.loads(llm_response)
+        elif isinstance(llm_response, dict):
+            analysis = llm_response
+        else:
+            raise TypeError(f"Unexpected type for llm_response: {type(llm_response)}")
+
         # Validate required fields
-        required_fields = [
-            "incident_id", "incident_summary", "cve_ids",
-            "incident_risk_level", "incident_risk_level_explanation"
-        ]
-        for field in required_fields:
+        logger.debug(f"Validating required fields for incident_id: {incident_id}...")
+        for field in (
+            "incident_id",
+            "incident_summary",
+            "cve_ids",
+            "incident_risk_level",
+            "incident_risk_level_explanation",
+        ):
             if field not in analysis:
                 raise ValueError(f"Missing required field: {field}")
-        
+
         # Read existing analyses
         analyses_file = "data/dummy_agent_incident_analyses.json"
         try:
-            with open(analyses_file, 'r') as f:
+            with open(analyses_file, "r") as f:
                 analyses = json.load(f)
         except FileNotFoundError:
             analyses = []
-        
-        # Add new analysis
+
+        # Append and write back
         analyses.append(analysis)
-        
-        # Save updated analyses
-        with open(analyses_file, 'w') as f:
+        logger.debug(f"Opening file {analyses_file} to write back analysis...")
+        with open(analyses_file, "w") as f:
             json.dump(analyses, f, indent=2)
-        
+
         logger.info(f"Saved analysis for incident {incident_id}")
-        
+
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse LLM response as JSON: {str(e)}")
+        logger.error(f"Failed to parse LLM response as JSON: {e}")
         raise
-    except Exception as e:
-        logger.error(f"Error saving incident analysis: {str(e)}")
+    except Exception:
+        logger.exception("Error saving incident analysis")
         raise
 
 # =========================================================================
