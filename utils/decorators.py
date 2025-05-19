@@ -5,21 +5,13 @@ import time
 import asyncio
 from typing import Any, Callable, Dict, Optional
 from datetime import datetime
-import logging
 from pathlib import Path
+from utils.logging_utils import setup_logger
 
 # Ensure logs directory exists
 Path('logs').mkdir(exist_ok=True)
 
-# Set up basic logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(Path('logs/mcp_cve.log'))
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger("decorators", "logs/timing_metrics.log")
 
 def timing_metric(func: Callable) -> Callable:
     """Measure and log execution time of functions.
