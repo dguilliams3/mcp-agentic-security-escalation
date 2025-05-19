@@ -6,7 +6,7 @@ Helpers to convert KEV & NVD JSON entries into
 """
 
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 from langchain_core.documents import Document
 
 
@@ -73,8 +73,6 @@ def flatten_nvd(item: Dict[str, Any]) -> Document:
         "last_modified": item.get("lastModifiedDate"),
     }
     return Document(page_content=page_content, metadata=metadata)
-
-# utils/flatteners.py  (append)
 
 def flatten_incident(incident: dict) -> str:
     """

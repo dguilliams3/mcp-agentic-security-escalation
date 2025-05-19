@@ -34,8 +34,8 @@ def initialize_embeddings():
     """
     Initialize the global embeddings object using OpenAI's embedding model.
 
-    This function creates a global embeddings instance using OpenAIEmbeddings, 
-    which will be used for converting text to vector representations across 
+    This function creates a global embeddings instance using OpenAIEmbeddings,
+    which will be used for converting text to vector representations across
     the semantic search functionality.
 
     The function is decorated with @timing_metric to track potential initialization cost.
@@ -69,7 +69,7 @@ def initialize_indexes():
     - Dangerous deserialization is allowed for loading pre-built indexes
 
     Note:
-        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_HISTORY_FAISS  
+        - Sets global variables: KEV_FAISS, NVD_FAISS, INCIDENT_HISTORY_FAISS
         - Requires OpenAI embeddings to be initialized first
         - Uses local vector store files in the 'data/vectorstore' directory
 
@@ -103,19 +103,19 @@ def _search(
     """
     Perform a semantic search on a given FAISS vector store.
 
-    This is a core search method that supports both standard similarity 
+    This is a core search method that supports both standard similarity
     search and Maximal Marginal Relevance (MMR) search strategies.
 
     Args:
         store (FAISS): The FAISS vector store to search
         query (str): The search query string
         k (int, optional): Number of top results to return. Defaults to 5.
-        use_mmr (bool, optional): Use Maximal Marginal Relevance for 
+        use_mmr (bool, optional): Use Maximal Marginal Relevance for
             more diverse results. Defaults to True.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
-        fetch_k (int, optional): Number of documents to fetch before filtering 
+        fetch_k (int, optional): Number of documents to fetch before filtering
             for MMR. If None, defaults to 2*k. Defaults to None.
 
     Returns:
@@ -134,7 +134,7 @@ def _search(
     """
     if embeddings is None:
         initialize_embeddings()
-    
+
     if use_mmr:
         # embed the query once
         vec = embeddings.embed_query(query)
@@ -171,18 +171,18 @@ def search_text(
     """
     Perform a semantic text search on a given FAISS vector store.
 
-    This function provides a simplified interface for searching a FAISS 
-    vector store using a text query, with optional Maximal Marginal 
+    This function provides a simplified interface for searching a FAISS
+    vector store using a text query, with optional Maximal Marginal
     Relevance (MMR) search.
 
     Args:
         text (str): The search query text
         store (FAISS): The FAISS vector store to search
         k (int, optional): Number of top results to return. Defaults to 5.
-        use_mmr (bool, optional): Use Maximal Marginal Relevance for 
+        use_mmr (bool, optional): Use Maximal Marginal Relevance for
             more diverse results. Defaults to False.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
 
     Returns:
@@ -230,11 +230,11 @@ def search_text(
 def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 0) -> Dict[str, Any]:
     """Get a list of incident IDs, optionally limited to a specific count and starting index.
     Returns most recent first.
-    
+
     Args:
         limit (Optional[int]): Maximum number of IDs to return
         start_index (Optional[int]): Starting index for the returned incidents (default 0)
-        
+
     Returns:
         Dict[str, Any]: Dictionary containing:
             - success: bool indicating if operation succeeded
@@ -248,23 +248,23 @@ def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 
             "file_exists": data_file.exists(),
             "current_working_dir": str(Path.cwd())
         }
-        
+
         with open(data_file, 'r') as f:
             incidents = json.load(f)
-            
+
         incident_ids = [incident["incident_id"] for incident in incidents]
         incident_ids.sort(reverse=True)
-        
+
         # Handle start_index bounds
         start_index = max(0, min(start_index, len(incident_ids)))
-        
+
         # If limit specified, return that many incidents from start_index
         if limit and limit > 0:
             incident_ids = incident_ids[start_index:start_index + limit]
         else:
             # Otherwise return all incidents from start_index
             incident_ids = incident_ids[start_index:]
-            
+
         return {
             "success": True,
             "incident_ids": incident_ids,
@@ -305,10 +305,10 @@ def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 
 
 def get_incident(incident_id: str) -> Dict[str, Any]:
     """Get full details of a specific incident.
-    
+
     Args:
         incident_id (str): The ID of the incident to retrieve
-        
+
     Returns:
         Dict[str, Any]: Incident data with metadata, or error information if not found
     """
@@ -316,10 +316,10 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
         data_file = Path("data/incidents.json")
         with open(data_file, 'r') as f:
             incidents = json.load(f)
-        
+
         # Find the specific incident
         incident = next((inc for inc in incidents if inc["incident_id"] == incident_id), None)
-        
+
         if incident:
             return {
                 "found": True,
@@ -349,7 +349,7 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
             "error": str(e),
             "incident_id": incident_id
         }
-        
+
 # =========================================================================
 # SEMANTIC MATCHING FUNCTIONS
 # =========================================================================
@@ -359,7 +359,7 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
 def semantic_match_incident(
     incident: dict,
     k_kev: int = 5,
-    k_nvd: int = 5, 
+    k_nvd: int = 5,
     kev_threshold: float = 0.3,
     use_mmr: bool = False,
     lambda_mult: float = 0.7,
@@ -377,12 +377,12 @@ def semantic_match_incident(
         incident (dict): The incident data to match against vulnerability databases
         k_kev (int, optional): Number of top KEV matches to return. Defaults to 5.
         k_nvd (int, optional): Number of top NVD matches to return. Defaults to 5.
-        kev_threshold (float, optional): Minimum similarity score to trigger NVD search. 
+        kev_threshold (float, optional): Minimum similarity score to trigger NVD search.
             Defaults to 0.3.
-        use_mmr (bool, optional): Use Maximal Marginal Relevance for 
+        use_mmr (bool, optional): Use Maximal Marginal Relevance for
             more diverse results. Defaults to False.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
 
     Returns:
@@ -400,13 +400,13 @@ def semantic_match_incident(
     """
     logger.info(f"Matching incident against KEV/NVD databases. KEV k={k_kev}, NVD k={k_nvd}")
     logger.debug(f"Incident details: {incident}")
-    
+
     # First search KEV database
     kev_hits = semantic_match_incident_kev(incident, k_kev, use_mmr, lambda_mult)
     best_kev_score = kev_hits[0]["similarity"] if kev_hits else 1.0
-    
+
     logger.info(f"Best KEV match score: {best_kev_score:.3f}")
-    
+
     # Only search NVD if KEV results aren't strong enough
     if best_kev_score < kev_threshold:
         logger.info(f"KEV score {best_kev_score:.3f} below threshold {kev_threshold}, skipping NVD search")
@@ -425,19 +425,19 @@ def semantic_match_incident_kev(
     lambda_mult: float = 0.7,
 ) -> List[Dict]:
     """
-    Perform semantic matching of an incident against the Known Exploited 
+    Perform semantic matching of an incident against the Known Exploited
     Vulnerabilities (KEV) database.
 
-    This function converts an incident into a searchable text representation 
+    This function converts an incident into a searchable text representation
     and finds the most semantically similar entries in the KEV database.
 
     Args:
         incident (dict): The incident data to match against KEV database
         k (int, optional): Number of top matches to return. Defaults to 5.
-        use_mmr (bool, optional): Use Maximal Marginal Relevance for 
+        use_mmr (bool, optional): Use Maximal Marginal Relevance for
             more diverse results. Defaults to False.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
 
     Returns:
@@ -456,16 +456,16 @@ def semantic_match_incident_kev(
     """
     logger.debug(f"Flattening incident text for KEV search")
     query_text = flatten_incident(incident)
-    
+
     # Initialize indexes if needed
     if KEV_FAISS is None:
         logger.info("KEV index not initialized, initializing now")
         initialize_indexes()
-    
-    logger.debug(f"Searching KEV index with k={k}, MMR={use_mmr}")    
+
+    logger.debug(f"Searching KEV index with k={k}, MMR={use_mmr}")
     kev_hits = _search(KEV_FAISS, query_text, k, use_mmr, lambda_mult)
     logger.info(f"Found {len(kev_hits)} KEV matches")
-    
+
     return kev_hits
 
 @timing_metric
@@ -476,19 +476,19 @@ def semantic_match_incident_nvd(
     lambda_mult: float = 0.7,
 ) -> List[Dict]:
     """
-    Perform semantic matching of an incident against the National 
+    Perform semantic matching of an incident against the National
     Vulnerability Database (NVD).
 
-    This function converts an incident into a searchable text representation 
+    This function converts an incident into a searchable text representation
     and finds the most semantically similar entries in the NVD database.
 
     Args:
         incident (dict): The incident data to match against NVD database
         k (int, optional): Number of top matches to return. Defaults to 5.
-        use_mmr (bool, optional): Use Maximal Marginal Relevance for 
+        use_mmr (bool, optional): Use Maximal Marginal Relevance for
             more diverse results. Defaults to False.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
 
     Returns:
@@ -507,16 +507,16 @@ def semantic_match_incident_nvd(
     """
     logger.debug(f"Flattening incident text for NVD search")
     query_text = flatten_incident(incident)
-    
+
     # Initialize indexes if needed
     if NVD_FAISS is None:
         logger.info("NVD index not initialized, initializing now")
         initialize_indexes()
-    
+
     logger.debug(f"Searching NVD index with k={k}, MMR={use_mmr}")
     nvd_hits = _search(NVD_FAISS, query_text, k, use_mmr, lambda_mult)
     logger.info(f"Found {len(nvd_hits)} NVD matches")
-    
+
     return nvd_hits
 
 # =========================================================================
@@ -529,16 +529,16 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
     """
     Batch process incidents to find related CVEs using semantic matching.
 
-    This function retrieves a batch of incident IDs and performs CVE matching 
-    for each incident. It provides a comprehensive overview of potential 
+    This function retrieves a batch of incident IDs and performs CVE matching
+    for each incident. It provides a comprehensive overview of potential
     vulnerability correlations across a set of incidents.
 
     Args:
-        batch_size (int, optional): Number of incidents to process. 
+        batch_size (int, optional): Number of incidents to process.
             Defaults to 5.
-        start_index (int, optional): Starting index for incident retrieval. 
+        start_index (int, optional): Starting index for incident retrieval.
             Useful for pagination. Defaults to 0.
-        top_k (int, optional): Number of top CVE matches to return per incident. 
+        top_k (int, optional): Number of top CVE matches to return per incident.
             Defaults to 3.
 
     Returns:
@@ -565,9 +565,9 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
             "error": "Failed to retrieve incident list",
             "debug_info": incident_list.get("debug_info", {})
         }
-        
+
     incident_id_to_cve_map = []
-    
+
     # Process each incident ID
     for incident_id in incident_list["incident_ids"]:
         # Get CVE matches for this incident
@@ -576,7 +576,7 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
             k=top_k,  # Get top_k (default of 3) matches from each source
             use_mmr=True  # Use maximal marginal relevance to avoid near-duplicates
         )
-        
+
         if "error" not in matches:
             incident_id_to_cve_map.append({
                 "incident_id": incident_id,
@@ -587,7 +587,7 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
                 "incident_id": incident_id,
                 "error": matches["error"]
             })
-            
+
     return {
         "success": True,
         "results": incident_id_to_cve_map,
@@ -603,14 +603,14 @@ def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -
     """
     Find top CVE candidates for a specific incident using semantic matching.
 
-    This function takes an incident ID and returns the most relevant CVEs 
+    This function takes an incident ID and returns the most relevant CVEs
     from both KEV and NVD databases, using semantic similarity search.
 
     Args:
         incident_id (str): Unique identifier of the incident to match
-        k (int, optional): Number of top CVE candidates to return per database. 
+        k (int, optional): Number of top CVE candidates to return per database.
             Defaults to 5.
-        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance
             for more diverse CVE results. Defaults to True.
 
     Returns:
@@ -643,16 +643,16 @@ def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -
 def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dict[str, Any]:
     """
     Get historical context and similar analyses for a specific list of incidents.
-    
+
     This function takes a list of incident IDs and finds similar historical
     incidents and their analyses for each one. It provides a comprehensive view
     of historical context for the specified incidents.
-    
+
     Args:
         incident_ids (List[str]): List of incident IDs to get historical context for
-        top_k (int, optional): Number of top similar incidents to return per incident. 
+        top_k (int, optional): Number of top similar incidents to return per incident.
             Defaults to 3.
-    
+
     Returns:
         Dict[str, Any]: A comprehensive mapping of incidents to their historical context:
             - 'success': Boolean indicating if the operation was successful
@@ -660,7 +660,7 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
             - 'metadata': Information about the processing
                 * 'incidents_processed': Actual number of incidents processed
                 * 'top_k': Number of similar incidents retrieved per incident
-    
+
     Example:
         historical_context = batch_get_historical_context(
             incident_ids=["INC-2024-001", "INC-2024-002"],
@@ -675,12 +675,12 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
         initialize_indexes()
 
     incident_id_to_context_map = []
-    
+
     # Process each incident ID
     for incident_id in incident_ids:
         # Get incident data
         incident_data = get_incident(incident_id)
-        
+
         if incident_data.get("found"):
             # Get historical context for this incident
             historical_context = get_similar_incidents_with_analyses(
@@ -690,7 +690,7 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
                 incident_fields=["incident_id", "similarity"],
                 analysis_fields=["incident_risk_level", "incident_summary", "cve_ids"]
             )
-            
+
             incident_id_to_context_map.append({
                 "incident_id": incident_id,
                 "historical_context": historical_context
@@ -700,7 +700,7 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
                 "incident_id": incident_id,
                 "error": "Incident not found"
             })
-            
+
     return {
         "success": True,
         "results": incident_id_to_context_map,
@@ -717,28 +717,28 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
 
 @cache_result(ttl_seconds=3600)
 def search_incident_analysis_history(
-    query: str, 
-    k: int = 5, 
-    use_mmr: bool = True, 
+    query: str,
+    k: int = 5,
+    use_mmr: bool = True,
     lambda_mult: float = 0.7
 ) -> List[Dict]:
     """
     Search the incident analysis history using semantic search.
-    
-    This function allows searching through previously analyzed incident documents 
-    using semantic similarity. It supports both standard similarity search and 
+
+    This function allows searching through previously analyzed incident documents
+    using semantic similarity. It supports both standard similarity search and
     Maximal Marginal Relevance (MMR) search for more diverse results.
-    
+
     Args:
         query (str): Natural language query to search the incident analysis history
         k (int, optional): Number of top results to return. Defaults to 5.
-        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance for search. 
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance for search.
                                   Helps get more diverse results. Defaults to True.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-                                       Higher values prioritize relevance, 
-                                       lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+                                       Higher values prioritize relevance,
+                                       lower values prioritize diversity.
                                        Defaults to 0.7.
-    
+
     Returns:
         List[Dict]: A list of matching incident analysis documents, each containing:
             - incident_id: ID of the similar incident
@@ -746,13 +746,13 @@ def search_incident_analysis_history(
             - incident_risk_level: Risk level assigned to the incident
             - cve_ids: Associated CVEs and their details
             - similarity: Similarity score of the match
-    
+
     Example:
         results = search_incident_analysis_history("ransomware attack")
         # Returns top 5 most semantically similar incident analyses
     """
     logger.info(f"Searching incident analysis history with query: {query}")
-    
+
     # Initialize indexes if needed
     if INCIDENT_HISTORY_FAISS is None:
         logger.info("Historical incident index not initialized, initializing now")
@@ -777,7 +777,7 @@ def search_incident_analysis_history(
         m = doc.metadata.copy()
         m["similarity"] = float(score)
         out.append(m)
-    
+
     logger.info(f"Found {len(out)} similar incidents")
     return out
 
@@ -796,21 +796,21 @@ def semantic_search_cves(
     """
     Perform a semantic search across CVE databases (KEV and/or NVD).
 
-    This function allows flexible searching of vulnerability databases using 
-    semantic similarity. It can search KEV (Known Exploited Vulnerabilities), 
+    This function allows flexible searching of vulnerability databases using
+    semantic similarity. It can search KEV (Known Exploited Vulnerabilities),
     NVD (National Vulnerability Database), or both.
 
     Args:
         query (str): Natural language query to search CVE databases
-        sources (List[str], optional): Databases to search. 
-            Defaults to ["kev", "nvd"]. 
+        sources (List[str], optional): Databases to search.
+            Defaults to ["kev", "nvd"].
             Allowed values are "kev" and "nvd".
-        k (int, optional): Number of top results to return per source. 
+        k (int, optional): Number of top results to return per source.
             Defaults to 5.
-        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance
             for more diverse results. Defaults to False.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
 
     Returns:
@@ -820,8 +820,8 @@ def semantic_search_cves(
             - 'nvd_candidates' (optional): Top CVE matches from NVD database
 
     Example:
-        results = semantic_search_cves("remote code execution", 
-                                       sources=["kev"], 
+        results = semantic_search_cves("remote code execution",
+                                       sources=["kev"],
                                        k=3)
     """
     out: Dict[str, Any] = {"query": query}
@@ -854,19 +854,19 @@ def search_similar_incidents(
 ) -> List[Dict]:
     """
     Search for similar incidents in the historical incident analyses index.
-    
+
     This function takes an incident, finds similar ones in the historical incident analyses index,
     and returns their metadata including risk levels and CVE associations.
-    
+
     Args:
         incident (dict): The incident to find similar ones for
         k (int, optional): Number of top matches to return. Defaults to 5.
-        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance
             for more diverse results. Defaults to True.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
-    
+
     Returns:
         List[Dict]: A list of similar incidents, each containing:
             - incident_id: ID of the similar incident
@@ -874,22 +874,22 @@ def search_similar_incidents(
             - incident_risk_level: Risk level assigned to the incident
             - cve_ids: Associated CVEs and their details
             - similarity: Similarity score with the query incident
-    
+
     Example:
         similar = search_similar_incidents(incident_data)
         for match in similar:
             print(f"Similar incident {match['incident_id']} with risk level {match['incident_risk_level']}")
     """
     logger.info(f"Searching for similar incidents with k={k}, MMR={use_mmr}")
-    
+
     # Initialize indexes if needed
     if INCIDENT_HISTORY_FAISS is None:
         logger.debug("Historical analyses index not initialized, initializing now")
         initialize_indexes()
-    
+
     # Flatten the incident for searching
     query_text = flatten_incident(incident)
-    
+
     # Perform the search
     if use_mmr:
         # MMR path: pull doc+score
@@ -909,7 +909,7 @@ def search_similar_incidents(
         m = doc.metadata.copy()
         m["similarity"] = float(score)
         out.append(m)
-    
+
     logger.info(f"Found {len(out)} similar incidents")
     return out
 
@@ -918,10 +918,10 @@ def search_similar_incidents(
 def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
     """
     Retrieve full analyses for a list of incident IDs from the dummy analyses database.
-    
+
     Args:
         incident_ids (List[str]): List of incident IDs to retrieve analyses for
-        
+
     Returns:
         Dict[str, Dict]: Dictionary mapping incident IDs to their full analyses
             - Keys are incident IDs
@@ -930,7 +930,7 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
                 * cve_ids and their details
                 * incident_risk_level
                 * incident_risk_level_explanation
-    
+
     Example:
         analyses = get_dummy_incident_analyses(["INC-2024-05-12-005", "INC-2024-07-01-007"])
         for incident_id, analysis in analyses.items():
@@ -940,10 +940,10 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
         data_file = Path("data/dummy_agent_incident_analyses.json")
         with open(data_file, 'r') as f:
             all_analyses = json.load(f)
-        
+
         # Create a lookup dictionary for faster access
         analyses_lookup = {analysis["incident_id"]: analysis for analysis in all_analyses}
-        
+
         # Retrieve requested analyses
         requested_analyses = {}
         for incident_id in incident_ids:
@@ -955,9 +955,9 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
                     "error": "Analysis not found",
                     "incident_id": incident_id
                 }
-        
+
         return requested_analyses
-        
+
     except FileNotFoundError:
         logger.error("Dummy analyses database not found")
         return {incident_id: {"error": "Database not found"} for incident_id in incident_ids}
@@ -976,32 +976,32 @@ def get_similar_incidents_with_analyses(
 ) -> Dict[str, Any]:
     """
     Find similar incidents and retrieve their full analyses.
-    
+
     This function combines semantic search with analysis retrieval to provide
     a complete view of similar incidents and their historical analyses.
-    
+
     Args:
         incident (dict): The incident to find similar ones for
         k (int, optional): Number of top matches to return. Defaults to 5.
-        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance 
+        use_mmr (bool, optional): Whether to use Maximal Marginal Relevance
             for more diverse results. Defaults to True.
-        lambda_mult (float, optional): Diversity control for MMR search. 
-            Higher values prioritize relevance, lower values prioritize diversity. 
+        lambda_mult (float, optional): Diversity control for MMR search.
+            Higher values prioritize relevance, lower values prioritize diversity.
             Defaults to 0.7.
         incident_fields (List[str], optional): Fields to include from similar incidents.
             Defaults to ["incident_id", "similarity"].
             Available fields: incident_id, similarity, incident_summary, incident_risk_level
         analysis_fields (List[str], optional): Fields to include from analyses.
             Defaults to ["incident_risk_level", "incident_summary", "cve_ids"].
-            Available fields: incident_summary, cve_ids, incident_risk_level, 
+            Available fields: incident_summary, cve_ids, incident_risk_level,
             incident_risk_level_explanation
-    
+
     Returns:
         Dict[str, Any]: A dictionary containing:
             - 'similar_incidents': List of similar incidents with selected fields
             - 'analyses': Dictionary mapping incident IDs to their selected analysis fields
             - 'metadata': Information about the search results
-    
+
     Example:
         # Get only risk levels and summaries
         results = get_similar_incidents_with_analyses(
@@ -1017,25 +1017,25 @@ def get_similar_incidents_with_analyses(
         use_mmr=use_mmr,
         lambda_mult=lambda_mult
     )
-    
+
     # Filter similar incidents to requested fields
     filtered_incidents = []
     for inc in similar_incidents:
         filtered_inc = {field: inc.get(field) for field in incident_fields if field in inc}
         filtered_incidents.append(filtered_inc)
-    
+
     # Extract incident IDs from the results
     incident_ids = [inc["incident_id"] for inc in filtered_incidents]
-    
+
     # Get full analyses for these incidents
     full_analyses = get_incident_analyses(incident_ids)
-    
+
     # Filter analyses to requested fields
     filtered_analyses = {}
     for analysis in full_analyses:
         incident_id = analysis['incident_id']
         filtered_analyses[incident_id] = analysis
-    
+
     return {
         "similar_incidents": filtered_incidents,
         "analyses": filtered_analyses,
@@ -1057,7 +1057,7 @@ def get_similar_incidents_with_analyses(
 async def write_to_faiss(documents: list[Document], index: FAISS=INCIDENT_HISTORY_FAISS, index_location: str="data/vectorstore/historical_incidents"):
     """
     Safely write new documents to a FAISS index using async lock.
-    
+
     Args:
         index (FAISS): The FAISS index instance.
         index_location (str): Directory where the index is stored.
@@ -1073,7 +1073,7 @@ async def write_to_faiss(documents: list[Document], index: FAISS=INCIDENT_HISTOR
 async def add_incident_to_history(incident: dict, analysis: dict):
     """
     Add a new incident and its analysis to the FAISS index without rebuilding.
-    
+
     Args:
         incident (dict): The incident data
         analysis (dict): The LLM's analysis of the incident
@@ -1081,7 +1081,7 @@ async def add_incident_to_history(incident: dict, analysis: dict):
     try:
         # Flatten the incident for embedding
         flattened_text = flatten_incident(incident)
-        
+
         # Create document with metadata
         doc = Document(
             page_content=flattened_text,
@@ -1094,7 +1094,7 @@ async def add_incident_to_history(incident: dict, analysis: dict):
                 "incident_risk_level_explanation": analysis["incident_risk_level_explanation"]
             }
         )
-        
+
         # Add to existing FAISS index
         global INCIDENT_HISTORY_FAISS
         if INCIDENT_HISTORY_FAISS is None:
@@ -1107,9 +1107,9 @@ async def add_incident_to_history(incident: dict, analysis: dict):
             index_location="data/vectorstore/historical_incidents",
             documents=[doc]
         )
-        
+
         logger.info(f"Added incident {incident['incident_id']} to history index!")
-        
+
     except Exception as e:
         logger.error(f"Error adding incident to history: {str(e)}")
         raise

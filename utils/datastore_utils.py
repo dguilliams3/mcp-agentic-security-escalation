@@ -117,10 +117,10 @@ def get_incident_analyses(incident_ids: list[str]) -> list[dict]:
     """
     Retrieve incident analyses from the database for a list of incident IDs.
     Returns a list of dictionaries containing both incident and analysis data.
-    
+
     Args:
         incident_ids (list[str]): List of incident IDs to retrieve analyses for
-        
+
     Returns:
         list[dict]: List of dictionaries containing incident data and analysis
     """
@@ -134,14 +134,14 @@ def get_incident_analyses(incident_ids: list[str]) -> list[dict]:
             .order_by(IncidentRecord.created_at.desc())
             .all()
         )
-        
+
         # Convert records to dictionaries
         results = []
         for record in records:
             try:
                 incident_data = json.loads(record.incident_raw_json) if record.incident_raw_json else None
                 analysis_data = json.loads(record.llm_analysis_json) if record.llm_analysis_json else None
-                
+
                 results.append({
                     "incident_id": record.incident_id,
                     "incident_data": incident_data,
@@ -153,10 +153,10 @@ def get_incident_analyses(incident_ids: list[str]) -> list[dict]:
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON for incident {record.incident_id}: {e}")
                 continue
-                
+
         logger.info(f"Successfully retrieved {len(results)} analyses!")
         return results
-        
+
     except Exception as e:
         logger.error(f"Error retrieving incident analyses: {e}")
         raise

@@ -21,7 +21,7 @@ if not OPENAI_KEY:
 async def analyze_batch(client: httpx.AsyncClient, start: int) -> dict:
     payload = {
         "start_index":    start,
-        "batch_size":     BATCH_SIZE, 
+        "batch_size":     BATCH_SIZE,
         "request_id":     str(uuid.uuid4()),
         "openai_api_key": OPENAI_KEY,
         "model_name":     MODEL_NAME

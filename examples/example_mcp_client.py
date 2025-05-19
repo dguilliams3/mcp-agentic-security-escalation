@@ -41,7 +41,7 @@ async def main():
             print("MCP tools loaded")
             agent = create_react_agent(model, tools)
             print("Agent created and ready to process requests")
-            
+
             # Execute agent query about Apple revenue trends
             print("Executing agent query...")
             # Use invoke with proper message format and await the response
@@ -50,11 +50,11 @@ async def main():
                     HumanMessage(content="Analyze how the revenue of Apple has changed over time compared to the revenue of Samsung and Microsoft.  Then, tell me about the revenue of Dan Guilliams")
                 ]
             })
-            
+
             # Get the final AI message (the actual analysis)
-            final_message = next(msg for msg in reversed(response["messages"]) 
+            final_message = next(msg for msg in reversed(response["messages"])
                                if isinstance(msg, AIMessage) and msg.content)
-            
+
             print("\nAgent Analysis:")
             print(final_message.content)
 

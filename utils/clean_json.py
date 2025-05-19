@@ -7,9 +7,9 @@ def clean_json_file(input_path, output_path):
     if not input_path.exists():
         print("File doesn't exist!")
         return False
-        
+
     print(f"File size: {input_path.stat().st_size} bytes")
-    
+
     try:
         # Read line by line
         print("Reading line by line:")
@@ -19,7 +19,7 @@ def clean_json_file(input_path, output_path):
                 if i >= 5:  # Just show first 5 lines
                     print("...")
                     break
-        
+
         # Now try to parse the whole thing
         with open(input_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -29,18 +29,18 @@ def clean_json_file(input_path, output_path):
                 content = content[1:]
             # Parse JSON
             data = json.loads(content)
-        
+
         print("Successfully parsed JSON")
         if isinstance(data, list):
             print(f"Found list with {len(data)} items")
         else:
             print(f"Found {type(data)} instead of list")
-        
+
         # Write back with proper formatting
         print(f"Writing to {output_path}")
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        
+
         print("Done!")
         return True
     except UnicodeDecodeError as e:

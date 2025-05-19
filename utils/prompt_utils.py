@@ -41,7 +41,7 @@ class AnalysisRequest(BaseModel):
     request_id: str = Field(description="Unique identifier for idempotency")
     openai_api_key: str = Field(description="OpenAI API key for this request")
     model_name: str = Field(description="Model name for this request", default=os.getenv("MODEL_NAME", "gpt-4o-mini"))
-    
+
 # Initialize the parser
 parser = PydanticOutputParser(pydantic_object=IncidentAnalysisList)
 
@@ -74,23 +74,23 @@ Now, when I ask you to analyze incidents, use the KEV/NVD context to inform your
 def generate_prompt(query: str, batch_faiss_results: List[Dict[str, Any]], historical_faiss_results: List[Dict[str, Any]], template=SYSTEM_TMPL):
     """
     Generate a prompt using LangChain's classes: SystemMessagePromptTemplate, HumanMessagePromptTemplate, and ChatPromptTemplate.
-    This ensures that the prompt is properly formatted and can be used by the agent.  
+    This ensures that the prompt is properly formatted and can be used by the agent.
     We additionally add a PydanticOutputParser to the prompt to ensure that the output is properly formatted.
     """
     # Extract incident IDs and get full details
     incident_ids = [
-        result["incident_id"] 
+        result["incident_id"]
         for result in batch_faiss_results.get("results", [])
         if "incident_id" in result
     ]
-    
+
     # Get full incident details
     incident_details = []
     for incident_id in incident_ids:
         incident_data = get_incident(incident_id)
         if incident_data.get("found"):
             incident_details.append(incident_data["incident_data"])
-    
+
     system_prompt = SystemMessagePromptTemplate.from_template(template)
     human_prompt = HumanMessagePromptTemplate.from_template("{user_query}")
     chat_prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
@@ -102,5 +102,5 @@ def generate_prompt(query: str, batch_faiss_results: List[Dict[str, Any]], histo
         format_instructions=parser.get_format_instructions(),
         user_query=query
     ).to_messages()
-    
+
     return complete_prompt

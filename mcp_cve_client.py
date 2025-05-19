@@ -25,15 +25,15 @@ from langchain.output_parsers import PydanticOutputParser
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
 # FastAPI Imports
-from fastapi import Depends, FastAPI, HTTPException  
+from fastapi import Depends, FastAPI, HTTPException
 
 # Local imports
 from utils.decorators import timing_metric, cache_result
 from utils.logging_utils import setup_logger
 from utils.retrieval_utils import (
-    add_incident_to_history, 
-    get_incident, 
-    save_incident_analysis, 
+    add_incident_to_history,
+    get_incident,
+    save_incident_analysis,
     batch_match_incident_to_cves,
     batch_get_historical_context
 )
@@ -56,11 +56,11 @@ redis = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
 async def lifespan(_: FastAPI):
     # Startup
     global logger, embeddings, MCP_SERVER_NAME, server_parameters
-    
+
     load_dotenv()
     logger = setup_logger()
     logger.info("FastAPI application starting up...")
-    
+
     logger.info("Initializing embeddings...")
     embeddings = OpenAIEmbeddings()
 
@@ -73,9 +73,9 @@ async def lifespan(_: FastAPI):
         args=[MCP_SERVER_NAME],
     )
     logger.info("FastAPI application startup initialization complete.")
-    
+
     yield  # This is where the application runs
-    
+
     # Shutdown (if needed)
     logger.info("Shutting down...")
 
@@ -95,13 +95,13 @@ async def claim_request_id(request: AnalysisRequest):
 
 
 query = """
-I need you to help me analyze some security incidents and rank their actual severity, using identify potential CVE connections and details. 
+I need you to help me analyze some security incidents and rank their actual severity, using identify potential CVE connections and details.
 Let's start with a small sample to test the system:
 1. Note the incident IDs and summaries you have available to you already.
 2. For each incident:
-    a.  Understand Incident Context: Reason about the affected assets, observed TTPs, and initial findings. 
-    b.  Identify Relevant CVEs: Determine which CVEs are potentially relevant based on the incident context and affected software/hardware, using LLM reasoning and potentially querying data sources. 
-    c.  Prioritize CVEs: Assess the risk and impact of relevant CVEs in the context of the specific incident, going beyond standard scores like CVSS. 
+    a.  Understand Incident Context: Reason about the affected assets, observed TTPs, and initial findings.
+    b.  Identify Relevant CVEs: Determine which CVEs are potentially relevant based on the incident context and affected software/hardware, using LLM reasoning and potentially querying data sources.
+    c.  Prioritize CVEs: Assess the risk and impact of relevant CVEs in the context of the specific incident, going beyond standard scores like CVSS.
     d.  Generate Analysis: Provide a brief, human-readable explanation of why certain CVEs are prioritized, linking them back to the incident details.
 3. Finally, and most importantly, provide an organized list of all analyzed incidents in the following format:
 {
@@ -149,9 +149,9 @@ async def ask_agent(agent, query: str):
     logger.debug(f"Query: {query}")
     # Use invoke with proper message format and await the response
     response = await agent.ainvoke({ "messages": query })
-    
+
     # Get the final AI message (the actual analysis)
-    final_message = next(msg for msg in reversed(response["messages"]) 
+    final_message = next(msg for msg in reversed(response["messages"])
                         if isinstance(msg, AIMessage) and msg.content)
     logger.debug(f"Final message: {final_message}")
     logger.debug(f"Full ainvoke response data: {response}")
@@ -169,8 +169,8 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
             logger.info("Server connection established!")
             # Initialize client session for communication
             async with ClientSession(
-                read, 
-                write, 
+                read,
+                write,
                 read_timeout_seconds=timedelta(seconds=15)
             ) as session:
                 logger.info("Initializing client session...")
@@ -184,7 +184,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
                 # Create the agent with the returned tools and sent the query
                 agent = create_react_agent(model, tools, name="CVE_Agent")
                 logger.info(f"Agent {agent.name} created and ready to process requests!")
-                
+
                 logger.info("Querying KEV/NVD indexes...")
                 batch_faiss_results = batch_match_incident_to_cves(
                     batch_size=batch_size,
@@ -196,7 +196,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
 
                 # Extract incident IDs from batch_faiss_results
                 incident_ids = [
-                    result["incident_id"] 
+                    result["incident_id"]
                     for result in batch_faiss_results.get("results", [])
                     if "incident_id" in result
                 ]
@@ -212,13 +212,13 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
 
                 logger.info("Generating prompt...")
                 prompt = generate_prompt(query, batch_faiss_results, historical_faiss_results)
-                logger.info("Prompt generated successfully!")            
+                logger.info("Prompt generated successfully!")
                 logger.debug(f"Prompt: {prompt}")
-                
+
                 logger.info("Asking agent...")
                 final_message, response = await ask_agent(agent, prompt)
                 logger.info("Agent asked successfully!")
-                
+
                 # Save the analysis if it's a valid JSON response
                 try:
                     if isinstance(final_message.content, str):
@@ -234,7 +234,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
                             # Note: We wouldn't need this in a larger system, we'd simply use the below writing to a database/datastore instead,
                             # but we keep it here for the sake of the demo and to show how we'd do it in a larger system.
                             await save_incident_analysis(analysis.incident_id, analysis.model_dump())
-                            
+           
                             # Get the incident data and add to historical data FAISS index for future use
                             logger.debug(f"Getting incident data for incident_id: {analysis.incident_id}...")
                             incident = get_incident(analysis.incident_id)
@@ -252,20 +252,20 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
                             # Note that we are saving even if we don't find the incident!
                             logger.info(f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {analysis.incident_id}...")
                             save_incident_and_analysis_to_db(
-                                request_id=request_id, 
-                                incident_id=analysis.incident_id, 
-                                model_name=model.name, 
+                                request_id=request_id,
+                                incident_id=analysis.incident_id,
+                                model_name=model.name,
                                 incident=incident_data, # We save the incident data itself since the incident object contains metadata from the get_incident() call
                                 analysis=analysis.model_dump()
                             )
                 except Exception as e:
                     logger.error(f"Error processing analysis: {str(e)}")
                     logger.debug(f"Raw response content: {final_message.content}")
-                
+
                 # Log results
                 logger.info("Processing complete!")
-                logger.debug("Response messages metadata: %s", 
-                    [(m.id, getattr(m, "additional_kwargs", {})) 
+                logger.debug("Response messages metadata: %s",
+                    [(m.id, getattr(m, "additional_kwargs", {}))
                     for m in response["messages"]])
     except Exception as e:
         error_count += 1
@@ -276,7 +276,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
         duration = time.perf_counter() - start_ts
         logger.debug(f"Total duration: {duration:.2f} seconds (request_id={request_id})")
         logger.info(f"Total errors: {error_count}")
-        
+
         # Extract token usage from the agent's response
         usage_metrics = {}
         if "response" in locals():
@@ -314,7 +314,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int = 0, b
             duration       = duration,
             error_count    = error_count
         )
-        
+
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
@@ -326,7 +326,7 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
         model_name = request.model_name
         logger.info(f"Initializing Model {model_name}...")
 
-        try: 
+        try:
             openai_api_key = request.openai_api_key
             if not openai_api_key:
                 logger.info("OPENAI_API_KEY not found in request, checking environment variables...")
@@ -334,7 +334,7 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
                 if not openai_api_key:
                     logger.error("OPENAI_API_KEY not found in environment variables either!")
                     raise HTTPException(status_code=401, detail="OPENAI_API_KEY not included in request and not found in environment variables.")
-            
+
             model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
             logger.info(f"Model {model_name} initialized successfully!")
         except Exception as e:
@@ -349,7 +349,7 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
             start_index=request.start_index,
             batch_size=request.batch_size
         )
-        
+
         return {
             "status": "success",
             "request_id": request.request_id,

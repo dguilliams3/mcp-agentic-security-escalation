@@ -75,7 +75,7 @@ def semantic_search_cves_tool(    query: str,
     lambda_mult: float = 0.7
 ) -> Dict[str, Any]:
     return semantic_search_cves(query, sources, k, use_mmr, lambda_mult)
-     
+
 @mcp.tool(annotations={
     "title": "Search NVD Entries (often to find the CVE ID and related information) for a specific match for ALL words in the query",
     "readOnlyHint": True,
@@ -175,7 +175,7 @@ def lookup_kev_by_cve_id(cve_id: str) -> dict:
 @timing_metric
 def test_server() -> str:
     """Test if the server is running and responsive.
-   
+
     Returns:
         str: A message indicating the server is running
     """
@@ -193,7 +193,7 @@ def test_server() -> str:
 @timing_metric
 async def get_current_time() -> str:
     """Get the current server time in ISO 8601 format.
-   
+
     Returns:
         str: Current timestamp in ISO 8601 format (e.g., "2023-08-15T10:30:00.000Z")
     """
@@ -213,7 +213,7 @@ async def get_current_time() -> str:
 @cache_result(ttl_seconds=300)  # Cache system info for 5 minutes
 async def get_system_info() -> Dict[str, Any]:
     """Get basic system information about the server environment.
-   
+
     Returns:
         Dict[str, Any]: Dictionary containing:
             - system: Operating system name
@@ -261,7 +261,7 @@ def list_incident_ids_tool(limit: Optional[int] = None, start_index: Optional[in
 @timing_metric
 @cache_result(ttl_seconds=60)  # Cache incident details for 1 minute
 def get_incident_tool(incident_id: str) -> Dict[str, Any]:
-    return get_incident(incident_id)     
+    return get_incident(incident_id)
 
 @mcp.tool(
     annotations={
@@ -276,7 +276,7 @@ def get_incident_tool(incident_id: str) -> Dict[str, Any]:
 @cache_result(ttl_seconds=300)  # Cache schema for 5 minutes
 def get_incident_schema() -> Dict[str, Any]:
     """Get the schema definition for incident data.
-   
+
     Returns:
         Dict[str, Any]: Static schema definition of the incident data structure
     """
@@ -475,5 +475,5 @@ def get_kev_schema() -> Dict[str, Any]:
 ########################################################
 ############## MAIN #####################################
 ########################################################
-if __name__ == "__main__":   
+if __name__ == "__main__":
     mcp.run(transport="stdio")          # ← KEY CHANGE

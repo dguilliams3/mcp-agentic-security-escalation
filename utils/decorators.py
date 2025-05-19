@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 def timing_metric(func: Callable) -> Callable:
     """Measure and log execution time of functions.
-    
+
     Args:
         func: The function to be wrapped
-        
+
     Returns:
         Wrapped function that logs timing metrics
     """
@@ -60,28 +60,28 @@ def timing_metric(func: Callable) -> Callable:
 
 def cache_result(ttl_seconds: int = 300) -> Callable:
     """Simple in-memory cache with TTL for function results.
-    
+
     Args:
         ttl_seconds: Time to live for cached results in seconds (default: 300)
-        
+
     Returns:
         Decorator function that implements caching
     """
     cache: Dict[str, Dict[str, Any]] = {}
-    
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Create cache key from function name and arguments
             key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            
+
             # Check if cached and not expired
             if key in cache:
                 result = cache[key]
                 if time.time() - result['timestamp'] < ttl_seconds:
                     logger.debug(f"Cache hit for {func.__name__}")
                     return result['data']
-            
+
             # Execute function and cache result
             result = func(*args, **kwargs)
             cache[key] = {

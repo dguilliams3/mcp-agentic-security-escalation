@@ -53,28 +53,28 @@ def create_session_with_retries() -> requests.Session:
 def rate_limited_request(url: str, **kwargs) -> requests.Response:
     """Make a rate-limited request with exponential backoff."""
     global last_request_time
-    
+
     # Determine rate limit based on API key presence
     rate_limit = RATE_LIMIT_WITH_KEY if NIST_API_KEY else RATE_LIMIT_WITHOUT_KEY
-    
+
     # Calculate time to wait
     now = time.time()
     time_since_last = now - last_request_time
     if time_since_last < 1/rate_limit:
         sleep_time = 1/rate_limit - time_since_last
         time.sleep(sleep_time)
-    
+
     # Add API key to headers if available
     headers = kwargs.get('headers', {})
     if NIST_API_KEY:
         headers['apiKey'] = NIST_API_KEY
     kwargs['headers'] = headers
-    
+
     # Make request with session
     session = create_session_with_retries()
     response = session.get(url, **kwargs)
     last_request_time = time.time()
-    
+
     return response
 
 # --------------- Vendor Filter Extraction ---------------
@@ -154,7 +154,7 @@ def filter_nvd_subset() -> None:
     with open(NVD_SUBSET, "w", encoding="utf-8") as f:
         json.dump(subset, f, indent=2)
     print(f"Wrote subset to {NVD_SUBSET}")
-    
+
 
 def download_kev_feed() -> None:
     """Download the CISA KEV JSON feed."""
