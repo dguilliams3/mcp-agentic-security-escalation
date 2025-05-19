@@ -4,16 +4,19 @@ import uuid
 import asyncio
 from dotenv import load_dotenv
 import httpx
-
+from utils.logging_utils import setup_logger
 load_dotenv()
 
 API_URL      = os.getenv("API_URL", "http://localhost:8000/analyze_incidents")
 OPENAI_KEY   = os.getenv("OPENAI_API_KEY")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 TOTAL        = int(os.getenv("TOTAL_INCIDENTS", "39"))
-BATCH_SIZE   = int(os.getenv("BATCH_SIZE", "5"))
-CONCURRENCY  = int(os.getenv("CONCURRENCY", "3"))  # how many batches at once
+BATCH_SIZE   = int(os.getenv("BATCH_SIZE", "4"))
+CONCURRENCY  = int(os.getenv("CONCURRENCY", "5"))  # how many batches at once
 START_INDEX  = int(os.getenv("START_INDEX", "0"))
+
+logger = setup_logger("run_analysis")
+logger.info(f"Running analysis with {TOTAL} incidents, batch size {BATCH_SIZE}, concurrency {CONCURRENCY}, start index {START_INDEX}")
 
 if not OPENAI_KEY:
     raise RuntimeError("Please set OPENAI_API_KEY in your .env")
@@ -40,25 +43,15 @@ async def main():
                 try:
                     out = await analyze_batch(client, start_index)
                     print(f"✅ Batch @ {start_index}: {out['result']}")
+                except httpx.ConnectError:
+                    print(f"❌ Batch @ {start_index} failed: could not connect to API (is the server running?)")
                 except Exception as e:
                     print(f"❌ Batch @ {start_index} failed:", e)
 
         # schedule all tasks at once
         tasks = [asyncio.create_task(guarded(start_index)) for start_index in start_indexes]
         # wait for all to finish
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-    # dev/query_db.py
-    import sqlite3
-    import pandas as pd
-
-    conn = sqlite3.connect("data/incident_analysis.db")
-    df = pd.read_sql_query("SELECT * FROM incident_analysis", conn)
-    pd.set_option("display.max_columns", None)
-    pd.set_option("display.width", None)
-
-    print(df)
-    conn.close()
