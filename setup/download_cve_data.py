@@ -28,7 +28,7 @@ NVD_ZIP = DATA_DIR / "nvdcve-1.1-2025.json.zip"
 NVD_RAW_JSON = DATA_DIR / "nvdcve-1.1-2025.json"
 NVD_SUBSET = DATA_DIR / "nvd_subset.json"
 KEV_JSON = DATA_DIR / "kev.json"
-
+INCIDENTS_PATH = DATA_DIR / "incidents.json"
 # Rate limiting configuration
 RATE_LIMIT_WITH_KEY = 50/60  # 50 requests per minute
 RATE_LIMIT_WITHOUT_KEY = 10/60  # 10 requests per minute

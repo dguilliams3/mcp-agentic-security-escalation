@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scripts/build_faiss_indexes.py
+scripts/build_KEV_and_NVD_faiss_indexes.py
 ------------------------------
 Reads kev.json and nvd_subset.json, flattens each entry,
 embeds with OpenAI, builds & saves two FAISS indexes.
@@ -43,34 +43,36 @@ args = parser.parse_args()
 
 embeddings = OpenAIEmbeddings(model=args.model, show_progress_bar=True)
 
+def build_kev_index():
+    # ---------- Build / Skip KEV index ----------
+    kev_json = DATA_DIR / "kev.json"
+    kev_out  = OUT_DIR / "kev"
 
-# ---------- Build / Skip KEV index ----------
-kev_json = DATA_DIR / "kev.json"
-kev_out  = OUT_DIR / "kev"
+    if index_is_fresh(kev_json, kev_out):
+        print("✅ KEV index up-to-date – skipping build")
+    else:
+        print("🔄 Building KEV index …")
+        kev_raw  = json.load(kev_json.open())
+        kev_docs = [flatten_kev(e) for e in kev_raw["vulnerabilities"]]
+        FAISS.from_documents(kev_docs, embeddings).save_local(kev_out)
+        print("✅ Saved KEV index to data/vectorstore/kev\n")
 
-if index_is_fresh(kev_json, kev_out):
-    print("✅ KEV index up-to-date – skipping build")
-else:
-    print("🔄 Building KEV index …")
-    kev_raw  = json.load(kev_json.open())
-    kev_docs = [flatten_kev(e) for e in kev_raw["vulnerabilities"]]
-    FAISS.from_documents(kev_docs, embeddings).save_local(kev_out)
-    print("✅ Saved KEV index to data/vectorstore/kev\n")
+def build_nvd_index():
+    # ---------- Build / Skip NVD index ----------
+    nvd_json = DATA_DIR / "nvd_subset.json"
+    nvd_out  = OUT_DIR / "nvd"
 
+    if index_is_fresh(nvd_json, nvd_out):
+        print("✅ NVD index up-to-date – skipping build")
+    else:
+        print("🔄 Building NVD index …")
+        nvd_raw  = json.load(nvd_json.open())
+        nvd_docs = [flatten_nvd(item) for item in nvd_raw.values()]
+        FAISS.from_documents(nvd_docs, embeddings).save_local(nvd_out)
+        print("✅ Saved NVD index to data/vectorstore/nvd\n")
 
-# ---------- Build / Skip NVD index ----------
-nvd_json = DATA_DIR / "nvd_subset.json"
-nvd_out  = OUT_DIR / "nvd"
-
-if index_is_fresh(nvd_json, nvd_out):
-    print("✅ NVD index up-to-date – skipping build")
-else:
-    print("🔄 Building NVD index …")
-    nvd_raw  = json.load(nvd_json.open())
-    nvd_docs = [flatten_nvd(item) for item in nvd_raw.values()]
-    FAISS.from_documents(nvd_docs, embeddings).save_local(nvd_out)
-    print("✅ Saved NVD index to data/vectorstore/nvd\n")
-
+build_kev_index()
+build_nvd_index()
 
 # ---------- Smoke-test query ----------
 if args.topk_test > 0:
