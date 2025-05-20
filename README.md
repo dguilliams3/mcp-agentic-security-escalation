@@ -5,16 +5,16 @@
 [![LangChain](https://img.shields.io/badge/LangChain-0.1.0-green.svg)](https://github.com/hwchase17/langchain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A sophisticated AI agent system designed to revolutionize security incident analysis through intelligent CVE (Common Vulnerabilities and Exposures) matching and risk assessment. Built with state-of-the-art LLM technology and semantic search capabilities.
+A sophisticated AI agent system designed to automate and augment the triage and escalation process for security incidents. It uses semantic CVE matching, LLM-driven risk reasoning, and persistent analysis records to create a scalable cybersecurity co-pilot. 
 
 ## 🌟 Key Features
 
-- **Semantic Search Engine**: Intelligent search across KEV, NVD, and historical incident databases using FAISS vector stores
-- **Contextual CVE Analysis**: Matches incidents to relevant CVEs using advanced semantic understanding
-- **Risk Assessment**: Automated risk scoring with detailed explanations based on historical context
-- **Vector-Based Learning**: Continuously improves matching accuracy through vector embeddings of past analyses
-- **Structured Output**: Generates consistent, well-formatted analysis reports with Pydantic validation
-- **Persistence Layer**: Robust data storage with SQLite and FAISS for long-term learning
+- **Semantic CVE Matching**: Uses FAISS-based vector stores for similarity search across KEV, NVD, and historical incident data.
+- **LLM-Guided Analysis**: Incorporates OpenAI’s GPT-4o-mini to interpret incident context and assign contextualized risk levels.
+- **Persistent Learning**: Stores risk assessments in SQLite and vectorizes them for future context injection.
+- **Agent Modularity**: ReAct-based LangChain agent with separation of tools, memory, and execution loop.
+- **Idempotent API Design**: Server enforces deduplication of requests by `request_id` to ensure reproducible behavior.
+- **Tool Isolation**: Retrieval logic lives in a separate `mcp_cve_server.py` tool endpoint, isolating the agent's decision logic from data access.
 
 ## 🏗️ Architecture
 
@@ -30,82 +30,61 @@ A sophisticated AI agent system designed to revolutionize security incident anal
 └────────────────┬────────────────┘
                  │
 ┌────────────────▼────────────────┐
-│        Agent Layer             │
+│        Agent Layer              │
 │ (LangChain, LangGraph, ReAct)   │
 └────────────────┬────────────────┘
                  │
 ┌────────────────▼────────────────┐
-│       Tools Layer               │
+│        Tools Layer              │
 │ (MCP Server, mcp_cve_server.py) │
 └────────────────┬────────────────┘
                  │
 ┌────────────────▼────────────────┐
-│       Storage Layer             │
+│        Storage Layer            │
 │ (FAISS, Redis, SQLite)          │
 └─────────────────────────────────┘
 ```
 
-
-## Project Structure:
-
-Main files:
+## Project Structure
 
 ```
 .
-├── main_security_agent_server.py           
-│     # FastAPI server:  
-│     # • /analyze_incidents endpoint enforces idempotency via unique request_id  
-│     # • Config-driven defaults (batch_size, model_name, Redis URL)  
-│     # • Orchestrates agent logic (separation of concerns)  
-│     # • Captures run metadata & logs (observability)  
-│ 
-├── mcp_cve_server.py                       
-│     # MCP tool server:  
-│     # • Defines CVE search tools (semantic, keyword, schema lookups)  
-│     # • @timing_metric & @cache_result for latency logging & caching  
-│     # • Purely “tools”—keeps retrieval logic out of agent core  
-│ 
-├── run_analysis.py                         
-│     # CLI batch runner:  
-│     # • Reads config (API URL, concurrency, batch_size)  
-│     # • Fires off concurrent requests to the API  
-│ 
-├── data/                                   
-│   ├── incidents.json                      
-│   ├── kev.json                            
-│   ├── nvd_subset.json                     
-│   └── vectorstore/                        
-│         # FAISS indexes for kev, nvd, and incident_history  
-│ 
-├── setup/                                  
-│   ├── download_cve_data.py                
-│   │     # Pulls & filters KEV/NVD feeds (config-driven URLs)  
-│   ├── build_faiss_KEV_and_NVD_indexes.py  
-│   │     # Embeds & builds FAISS indexes for KEV & NVD  
-│   ├── build_historical_incident_analyses_index.py  
-│   │     # Builds FAISS index on dummy/historical incidents  
-│   └── setup_initial_CVE_data_and_FAISS_indexes.sh  
-│         # Shell wrapper: runs all setup steps in one go  
-│ 
-└── utils/                                  
-    ├── retrieval_utils.py                  
-    │     # Embedding init, batch_match, historical_context, MMR search  
-    ├── flatteners.py                       
-    │     # JSON → text flatteners for incidents, KEV, NVD  
-    ├── prompt_utils.py                     
-    │     # Prompt templates, Pydantic models, prompt‐generation logic  
-    ├── datastore_utils.py                  
-    │     # SQLAlchemy DB ops (incident & run_metadata tables)  
-    └── decorators.py                       
-          # @timing_metric & @cache_result for observability & idempotency  
+├── .dockerignore                          # Excludes venv, __pycache__, logs, data backups, etc.
+├── Dockerfile                             # Sets up FastAPI environment and app code
+├── docker-compose.yml                     # Spins up Redis, FastAPI, analyzer, dashboard
+│
+├── main_security_agent_server.py           # FastAPI API server coordinating analysis requests
+│   ├── Enforces idempotency via request_id
+│   ├── Config-driven defaults (batch_size, model_name, redis URL, etc.)
+│   └── Logs run metadata and output token usage
+├── mcp_cve_server.py                       # Tool server providing CVE search, schema lookup, and risk normalization tools
+│   ├── Decorated with @timing_metric and @cache_result
+│   └── Retrieval logic isolated from agent execution
+├── run_analysis.py                         # CLI script that sends incident batches to the API server
+├── data/                                   # Input datasets and vector stores
+│   ├── incidents.json                      # Input security incidents
+│   ├── kev.json                            # Known Exploited Vulnerabilities
+│   ├── nvd_subset.json                     # National Vulnerability Database subset
+│   └── vectorstore/                        # FAISS vector indexes (NVD, KEV, incident history)
+├── setup/                                  # Initialization scripts
+│   ├── download_cve_data.py                # Downloads and filters CVE datasets
+│   ├── build_faiss_KEV_and_NVD_indexes.py  # Builds KEV/NVD vector indexes
+│   ├── build_historical_incident_analyses_index.py  # Builds vector index from dummy historical incidents
+│   └── setup_initial_CVE_data_and_FAISS_indexes.sh  # Shell wrapper to run all setup steps
+└── utils/                                  # Support modules
+    ├── retrieval_utils.py                  # Embedding, FAISS search, reranking via MMR
+    ├── flatteners.py                       # JSON → string transformation for embedding input
+    ├── prompt_utils.py                     # Prompt templates and output schemas
+    ├── datastore_utils.py                  # SQLite persistence of runs and incident metadata
+    └── decorators.py                       # Timing and caching decorators for observability
 ```
 
 ## 🚀 Getting Started
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/rad-security.git
-   cd rad-security
+   git clone https://github.com/dguilliams3/mcp-agentic-security-escalation.git
+   cd mcp-agentic-security-escalation
    ```
 
 2. **Install Dependencies**
@@ -113,91 +92,48 @@ Main files:
    pip install -r requirements.txt
    ```
 
-3. **Set Up Environment**
+3. **Initialize Environment**
    ```bash
-   # Start Redis for caching
    docker run -d --name local-redis -p 6379:6379 redis:latest
-   
-   # Download CVE data and build indexes
-   python setup/download_cve_data.py
-   python setup/build_faiss_KEV_and_NVVD_indexes.py
-   python setup/build_historical_incident_analyses_indexes.py
-   ```
-
-   (Alternatively, you can run the shell script below)
-   ```bash
    sh setup/setup_initial_CVE_data_and_FAISS_indexes.sh
    ```
 
-4. **Run the Analysis**
-   
-   First, run the FastAPI server:
-   ```bash
-   python main_security_agent_server.py
-   ```
+4. **Run the System**
+   - Start the FastAPI server:
+     ```bash
+     python main_security_agent_server.py
+     ```
+   - Execute batch analysis via:
+     ```bash
+     python run_analysis.py
+     ```
 
-   Then you're free to run the batches asynchronously using:
-   
-   ```bash
-   python run_analysis.py
-   ```
+## 🐳 Dockerized Deployment (Optional)
 
-## 📝 Logging Configuration
-
-By default, the system logs detailed information about operations and timing metrics. To modify logging behavior:
-
-### In Jupyter Notebooks
-```python
-import logging
-# Disable all logging
-logging.getLogger().setLevel(logging.ERROR)
-
-# Or disable specific loggers
-logging.getLogger("root").setLevel(logging.ERROR)  # Main application logs
-logging.getLogger("retrieval_utils").setLevel(logging.ERROR)  # Search/retrieval logs
-logging.getLogger("openai").setLevel(logging.ERROR)  # OpenAI API logs
-```
-
-### In Python Scripts
-Add these environment variables before running scripts:
+Launch all services in one go:
 ```bash
-export LOG_LEVEL=ERROR  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-export DISABLE_TIMING_METRICS=true  # Disables performance logging
+docker compose up --build
 ```
+This will start:
+- Redis (caching layer)
+- FastAPI API server (port `8000`)
+- Analyzer (runs `run_analysis.py`)
+- Streamlit dashboard (available at `http://localhost:8501`)
+
+Includes named volumes for persistent data:
+- `redis-data`, `sqlite-data`, and optional `cve-data`
+
+Each service has healthchecks and startup ordering enforced.
 
 ## 💡 How It Works
 
-1. **Incident Input**: System accepts security incidents with detailed metadata
-2. **Semantic Analysis**: 
-   - Converts incidents into vector embeddings
-   - Searches across multiple vulnerability databases
-   - Identifies semantically relevant CVEs
-3. **Risk Assessment**:
-   - Evaluates incident severity
-   - Considers historical context
-   - Generates risk scores with explanations
-4. **Output Generation**:
-   - Produces structured analysis reports
-   - Includes prioritized CVE matches
-   - Provides actionable insights
+1. **Incident Preprocessing**: Incidents are flattened, embedded, and semantically matched to CVEs.
+2. **CVE Matching**: FAISS indexes return high-relevance matches based on KEV/NVD text similarity.
+3. **Risk Assessment**: LLM scores each CVE-incident pairing, injecting historical analysis as additional context.
+4. **Tool Calls**: Tools are used selectively based on agent reasoning, including schema validation and reranking.
+5. **Structured Output**: Results are written to SQLite and optionally re-indexed for vector-based feedback learning.
 
-## 📊 Key Components
-
-- `main_security_agent_server.py`: FastAPI server coordinating analysis
-- `mcp_cve_server.py`: Tool server providing CVE search capabilities
-- `utils/retrieval_utils.py`: Core semantic search functionality
-- `data/vectorstore/`: FAISS indexes for fast similarity search
-- `setup/`: Scripts for data download and index building
-
-## 🔧 Advanced Features
-
-- **Maximal Marginal Relevance (MMR)**: Ensures diverse, relevant CVE matches
-- **Vector Store Management**: Efficient handling of large-scale vulnerability data
-- **Caching Layer**: Redis-based caching for improved performance
-- **Structured Persistence**: SQLite storage for analysis history
-- **Comprehensive Logging**: Detailed logging for debugging and monitoring
-
-## 🔍 Example Analysis Output
+## 🔍 Example Output
 
 ```json
 {
@@ -218,26 +154,26 @@ export DISABLE_TIMING_METRICS=true  # Disables performance logging
 
 ## 📈 Performance Metrics
 
-- Average analysis time: < 20 seconds per incident (including DB & index writing)
-- Scalable to thousands of incidents per day through intelligent decomposition and containerization w/ clustering infra
-- Efficient token usage through smart context management and prompt injection
+- Average end-to-end time per incident: **< 20 seconds**
+- Full concurrency across batches supported via asyncio + FastAPI
+- Dockerized deployment supports modular rollout, shared DB access, and dashboard monitoring
 
-## 🛠️ Development
+## 🛠️ Developer Notes
 
-- **Testing**: Run tests with `pytest`
-- **Code Style**: Follows Black formatting
-- **Type Hints**: Comprehensive typing with mypy support
-- **Documentation**: Detailed docstrings and architecture docs
+- **Type Safety**: Pydantic schemas ensure response format validation
+- **Observability**: Decorators log latency, cache usage, and API calls per tool
+- **Extensibility**: Easily swap out vector DBs, LLM endpoints, or caching backends
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License. See [LICENSE](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- OpenAI for the powerful LLM capabilities
-- NIST for the CVE database
-- CISA for the Known Exploited Vulnerabilities (KEV) catalog
+- OpenAI (GPT-4o)
+- CISA & NIST for public CVE and KEV datasets
+- LangChain for tooling abstraction and orchestration support
 
----
 Built with ❤️ by [Dan Guilliams](https://github.com/dguilliams3) 
+
+
