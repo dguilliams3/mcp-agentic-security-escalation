@@ -45,6 +45,61 @@ A sophisticated AI agent system designed to revolutionize security incident anal
 └─────────────────────────────────┘
 ```
 
+
+## Project Structure:
+
+Main files:
+
+```
+.
+├── main_security_agent_server.py           
+│     # FastAPI server:  
+│     # • /analyze_incidents endpoint enforces idempotency via unique request_id  
+│     # • Config-driven defaults (batch_size, model_name, Redis URL)  
+│     # • Orchestrates agent logic (separation of concerns)  
+│     # • Captures run metadata & logs (observability)  
+│ 
+├── mcp_cve_server.py                       
+│     # MCP tool server:  
+│     # • Defines CVE search tools (semantic, keyword, schema lookups)  
+│     # • @timing_metric & @cache_result for latency logging & caching  
+│     # • Purely “tools”—keeps retrieval logic out of agent core  
+│ 
+├── run_analysis.py                         
+│     # CLI batch runner:  
+│     # • Reads config (API URL, concurrency, batch_size)  
+│     # • Fires off concurrent requests to the API  
+│ 
+├── data/                                   
+│   ├── incidents.json                      
+│   ├── kev.json                            
+│   ├── nvd_subset.json                     
+│   └── vectorstore/                        
+│         # FAISS indexes for kev, nvd, and incident_history  
+│ 
+├── setup/                                  
+│   ├── download_cve_data.py                
+│   │     # Pulls & filters KEV/NVD feeds (config-driven URLs)  
+│   ├── build_faiss_KEV_and_NVD_indexes.py  
+│   │     # Embeds & builds FAISS indexes for KEV & NVD  
+│   ├── build_historical_incident_analyses_index.py  
+│   │     # Builds FAISS index on dummy/historical incidents  
+│   └── setup_initial_CVE_data_and_FAISS_indexes.sh  
+│         # Shell wrapper: runs all setup steps in one go  
+│ 
+└── utils/                                  
+    ├── retrieval_utils.py                  
+    │     # Embedding init, batch_match, historical_context, MMR search  
+    ├── flatteners.py                       
+    │     # JSON → text flatteners for incidents, KEV, NVD  
+    ├── prompt_utils.py                     
+    │     # Prompt templates, Pydantic models, prompt‐generation logic  
+    ├── datastore_utils.py                  
+    │     # SQLAlchemy DB ops (incident & run_metadata tables)  
+    └── decorators.py                       
+          # @timing_metric & @cache_result for observability & idempotency  
+```
+
 ## 🚀 Getting Started
 
 1. **Clone the Repository**
