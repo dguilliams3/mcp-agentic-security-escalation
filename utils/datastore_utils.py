@@ -8,7 +8,7 @@ import json
 import os
 from utils.logging_utils import setup_logger
 
-logger = setup_logger()
+logger = setup_logger("datastore_utils")
 
 # --- Configuration ---
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/incident_analysis.db")  # Swap with postgres:// URI as needed
@@ -38,47 +38,6 @@ class IncidentRecord(Base):
 # --- Create Tables If Not Exists ---
 def init_db():
     Base.metadata.create_all(bind=engine)
-
-# --- Insert Function ---
-def save_incident_and_analysis_to_sqlite_db(
-    request_id: str,
-    incident_id: str,
-    model_name: str,
-    incident: dict,
-    analysis: dict
-):
-    """
-    Save both the incident and its analysis to the SQLite database.
-    This is the primary storage location for incident analyses.
-    
-    Args:
-        request_id (str): Unique identifier for this analysis request
-        incident_id (str): ID of the incident being analyzed
-        model_name (str): Name of the LLM model used for analysis
-        incident (dict): The original incident data
-        analysis (dict): The LLM's analysis of the incident
-    """
-    session = SessionLocal()
-    try:
-        logger.info(f"Saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}...")
-        record = IncidentRecord(
-            request_id=request_id,
-            incident_id=incident_id,
-            incident_raw_json=json.dumps(incident),
-            llm_analysis_json=json.dumps(analysis),
-            llm_risk_score=analysis.get("incident_risk_level", None),
-            model_name=model_name
-        )
-        session.add(record)
-        session.commit()
-        logger.info(f"Successfully saved incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}!")
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}")
-        raise e
-    finally:
-        session.close()
-        logger.debug(f"Closed database session for request_id: {request_id}, incident_id: {incident_id}")
 
 class RunMetadata(Base):
     __tablename__ = "run_metadata"
@@ -123,6 +82,47 @@ def save_run_metadata(
         session.commit()
     finally:
         session.close()
+
+# --- Insert Function ---
+def save_incident_and_analysis_to_sqlite_db(
+    request_id: str,
+    incident_id: str,
+    model_name: str,
+    incident: dict,
+    analysis: dict
+):
+    """
+    Save both the incident and its analysis to the SQLite database.
+    This is the primary storage location for incident analyses.
+    
+    Args:
+        request_id (str): Unique identifier for this analysis request
+        incident_id (str): ID of the incident being analyzed
+        model_name (str): Name of the LLM model used for analysis
+        incident (dict): The original incident data
+        analysis (dict): The LLM's analysis of the incident
+    """
+    session = SessionLocal()
+    try:
+        logger.info(f"Saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}...")
+        record = IncidentRecord(
+            request_id=request_id,
+            incident_id=incident_id,
+            incident_raw_json=json.dumps(incident),
+            llm_analysis_json=json.dumps(analysis),
+            llm_risk_score=analysis.get("incident_risk_level", None),
+            model_name=model_name
+        )
+        session.add(record)
+        session.commit()
+        logger.info(f"Successfully saved incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}!")
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}")
+        raise e
+    finally:
+        session.close()
+        logger.debug(f"Closed database session for request_id: {request_id}, incident_id: {incident_id}")
 
 def get_incident_analyses_from_database(incident_ids: list[str]) -> list[dict]:
     """

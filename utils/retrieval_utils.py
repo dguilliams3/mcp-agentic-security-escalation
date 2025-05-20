@@ -414,14 +414,14 @@ def semantic_match_incident(
 
     # First search KEV database
     kev_hits = semantic_match_incident_kev(incident, k_kev, use_mmr, lambda_mult)
-    best_kev_score = kev_hits[0]["variance"] if kev_hits else 1.0
+    lowest_kev_variance = kev_hits[0]["variance"] if kev_hits else 1.0
 
-    logger.info(f"Best KEV match score: {best_kev_score:.3f}")
+    logger.info(f"Lowest KEV variance: {lowest_kev_variance:.3f}")
 
     # Only search NVD if KEV results aren't strong enough
-    if best_kev_score < kev_threshold:
-        logger.info(f"KEV score {best_kev_score:.3f} below threshold {kev_threshold}, skipping NVD search")
-        nvd_hits = [f"Kev score of {best_kev_score} is satisfactory enough to skip searching NVD"]
+    if lowest_kev_variance < kev_threshold:
+        logger.info(f"KEV variance {lowest_kev_variance:.3f} below threshold {kev_threshold}, skipping NVD search")
+        nvd_hits = [f"Kev varaince of {lowest_kev_variance} is satisfactory enough to skip searching NVD"]
     else:
         logger.info("KEV score above threshold, searching NVD database")
         nvd_hits = semantic_match_incident_nvd(incident, k_nvd, use_mmr, lambda_mult)

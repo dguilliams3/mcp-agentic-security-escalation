@@ -33,8 +33,8 @@ Example:
 from .decorators import timing_metric, cache_result
 from .flatteners import flatten_kev, flatten_nvd, flatten_incident
 from .retrieval_utils import (
-    initialize_embeddings,
-    initialize_indexes,
+    initialize_openai_embeddings,
+    initialize_faiss_indexes,
     _search,
     KEV_FAISS,
     NVD_FAISS,
@@ -51,9 +51,9 @@ from .prompt_utils import (
 from .clean_json import clean_json_file
 from .datastore_utils import (
     init_db,
-    save_incident_and_analysis_to_db,
+    save_incident_and_analysis_to_sqlite_db,
     save_run_metadata,
-    get_incident_analyses,
+    get_incident_analyses_from_database,
     IncidentRecord,
     RunMetadata,
     SessionLocal,
@@ -73,8 +73,8 @@ __all__ = [
     'flatten_incident', # Flattens incident data structure
     
     # Retrieval Utils
-    'initialize_embeddings',  # Initialize embedding models for vector search
-    'initialize_indexes',     # Initialize FAISS indexes for vector search
+    'initialize_openai_embeddings',  # Initialize OpenAI embedding models for vector search
+    'initialize_faiss_indexes',     # Initialize FAISS indexes for vector search
     '_search',               # Internal search function for vector similarity
     'KEV_FAISS',            # FAISS index for KEV data
     'NVD_FAISS',            # FAISS index for NVD data
@@ -94,7 +94,7 @@ __all__ = [
     
     # Datastore Utils
     'init_db',                     # Initialize database tables
-    'save_incident_and_analysis_to_db',  # Save incident and analysis to database
+    'save_incident_and_analysis_to_sqlite_db',  # Save incident and analysis to SQLite database
     'save_run_metadata',           # Save run metadata to database
     'get_incident_analyses',       # Retrieve incident analyses from database
     'IncidentRecord',             # SQLAlchemy model for incident records
