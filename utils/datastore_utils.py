@@ -40,16 +40,27 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 # --- Insert Function ---
-def save_incident_and_analysis_to_db(
+def save_incident_and_analysis_to_sqlite_db(
     request_id: str,
     incident_id: str,
     model_name: str,
     incident: dict,
     analysis: dict
 ):
+    """
+    Save both the incident and its analysis to the SQLite database.
+    This is the primary storage location for incident analyses.
+    
+    Args:
+        request_id (str): Unique identifier for this analysis request
+        incident_id (str): ID of the incident being analyzed
+        model_name (str): Name of the LLM model used for analysis
+        incident (dict): The original incident data
+        analysis (dict): The LLM's analysis of the incident
+    """
     session = SessionLocal()
     try:
-        logger.info(f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {incident_id}...")
+        logger.info(f"Saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}...")
         record = IncidentRecord(
             request_id=request_id,
             incident_id=incident_id,
@@ -60,10 +71,10 @@ def save_incident_and_analysis_to_db(
         )
         session.add(record)
         session.commit()
-        logger.info(f"Successfully saved incident and analysis to database for request_id: {request_id}, incident_id: {incident_id}!")
+        logger.info(f"Successfully saved incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}!")
     except Exception as e:
         session.rollback()
-        logger.error(f"Error saving incident and analysis to database for request_id: {request_id}, incident_id: {incident_id}")
+        logger.error(f"Error saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}")
         raise e
     finally:
         session.close()
@@ -113,7 +124,7 @@ def save_run_metadata(
     finally:
         session.close()
 
-def get_incident_analyses(incident_ids: list[str]) -> list[dict]:
+def get_incident_analyses_from_database(incident_ids: list[str]) -> list[dict]:
     """
     Retrieve incident analyses from the database for a list of incident IDs.
     Returns a list of dictionaries containing both incident and analysis data.

@@ -28,6 +28,8 @@ Thumbs.db
 logs/
 temp/
 .cache/
+data/backups/incident_analyses/*.json
+
 # generated vector stores
 data/vectorstore/
 # full upstream feeds
@@ -50,3 +52,6 @@ instance/
 # Experimental and Archive
 experimental/
 archive/ 
+
+# Checkpoint files
+*.ipynb_checkpoints/

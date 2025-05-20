@@ -34,6 +34,8 @@ if not OPENAI_API_KEY:
 DATA_DIR = Path("data")
 OUT_DIR  = DATA_DIR / "vectorstore"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+kev_json = DATA_DIR / "kev.json"
+kev_out  = OUT_DIR / "kev"
 
 # ---------- CLI --------------
 parser = argparse.ArgumentParser()
@@ -45,8 +47,7 @@ embeddings = OpenAIEmbeddings(model=args.model, show_progress_bar=True)
 
 def build_kev_index():
     # ---------- Build / Skip KEV index ----------
-    kev_json = DATA_DIR / "kev.json"
-    kev_out  = OUT_DIR / "kev"
+
 
     if index_is_fresh(kev_json, kev_out):
         print("✅ KEV index up-to-date – skipping build")

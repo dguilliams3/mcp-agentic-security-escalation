@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+"""
+scripts/build_historical_incident_analyses_index.py
+--------------------------------------------------
+Reads incidents.json, flattens each entry,
+embeds with OpenAI, builds & saves FAISS index for historical incident analyses.
+
+Have in your .env file:
+    OPENAI_API_KEY=sk-...
+"""
 
 from pathlib import Path
 import json, os, argparse
