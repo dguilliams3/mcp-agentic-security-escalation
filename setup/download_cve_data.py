@@ -30,14 +30,15 @@ NVD_SUBSET = DATA_DIR / "nvd_subset.json"
 KEV_JSON = DATA_DIR / "kev.json"
 INCIDENTS_PATH = DATA_DIR / "incidents.json"
 # Rate limiting configuration
-RATE_LIMIT_WITH_KEY = 50/60  # 50 requests per minute
-RATE_LIMIT_WITHOUT_KEY = 10/60  # 10 requests per minute
+RATE_LIMIT_WITH_KEY = 50 / 60  # 50 requests per minute
+RATE_LIMIT_WITHOUT_KEY = 10 / 60  # 10 requests per minute
 last_request_time = 0
 
 # API key configuration
-NIST_API_KEY = os.getenv('NIST_API_KEY', '')
+NIST_API_KEY = os.getenv("NIST_API_KEY", "")
 
 # --------------- Request Handling ---------------
+
 
 def create_session_with_retries() -> requests.Session:
     """Create a session with retry strategy."""
@@ -45,10 +46,11 @@ def create_session_with_retries() -> requests.Session:
     retries = Retry(
         total=5,  # number of retries
         backoff_factor=1,  # will sleep for [1s, 2s, 4s, 8s, 16s]
-        status_forcelist=[429, 500, 502, 503, 504]
+        status_forcelist=[429, 500, 502, 503, 504],
     )
-    session.mount('https://', HTTPAdapter(max_retries=retries))
+    session.mount("https://", HTTPAdapter(max_retries=retries))
     return session
+
 
 def rate_limited_request(url: str, **kwargs) -> requests.Response:
     """Make a rate-limited request with exponential backoff."""
@@ -60,15 +62,15 @@ def rate_limited_request(url: str, **kwargs) -> requests.Response:
     # Calculate time to wait
     now = time.time()
     time_since_last = now - last_request_time
-    if time_since_last < 1/rate_limit:
-        sleep_time = 1/rate_limit - time_since_last
+    if time_since_last < 1 / rate_limit:
+        sleep_time = 1 / rate_limit - time_since_last
         time.sleep(sleep_time)
 
     # Add API key to headers if available
-    headers = kwargs.get('headers', {})
+    headers = kwargs.get("headers", {})
     if NIST_API_KEY:
-        headers['apiKey'] = NIST_API_KEY
-    kwargs['headers'] = headers
+        headers["apiKey"] = NIST_API_KEY
+    kwargs["headers"] = headers
 
     # Make request with session
     session = create_session_with_retries()
@@ -76,6 +78,7 @@ def rate_limited_request(url: str, **kwargs) -> requests.Response:
     last_request_time = time.time()
 
     return response
+
 
 # --------------- Vendor Filter Extraction ---------------
 def extract_vendor_filters() -> list[str]:
@@ -92,19 +95,17 @@ def extract_vendor_filters() -> list[str]:
                 filters.add(vendor)
     return sorted(filters)
 
+
 VENDOR_FILTERS = extract_vendor_filters()
 print("Using vendor filters:", VENDOR_FILTERS)
 
 # NVD feed URL for 2025
-NVD_FEED_URL = (
-    "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2025.json.zip"
-)
+NVD_FEED_URL = "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2025.json.zip"
 # CISA KEV (Known-Exploited Vulnerabilities) JSON feed
-KEV_FEED_URL = (
-    "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-)
+KEV_FEED_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 # --------------- Prep Functions ---------------
+
 
 def download_nvd_feed() -> None:
     """Download the 2025 NVD CVE feed ZIP if not already present."""
@@ -118,6 +119,7 @@ def download_nvd_feed() -> None:
     else:
         print("NVD ZIP already present.")
 
+
 def extract_nvd_json() -> None:
     """Extract the JSON file from the downloaded ZIP."""
     if not NVD_RAW_JSON.exists():
@@ -130,6 +132,7 @@ def extract_nvd_json() -> None:
         print("Extraction complete.")
     else:
         print("Raw NVD JSON already present.")
+
 
 def filter_nvd_subset() -> None:
     """
@@ -165,11 +168,13 @@ def download_kev_feed() -> None:
     KEV_JSON.write_bytes(resp.content)
     print(f"Wrote KEV data to {KEV_JSON}")
 
+
 # --------------- Runtime Utility Functions ---------------
 
 # Lazy-load caches
 _NVD_INDEX: Optional[Dict[str, dict]] = None
 _KEV_INDEX: Optional[Dict[str, str]] = None
+
 
 def _load_nvd_index() -> Dict[str, dict]:
     global _NVD_INDEX
@@ -179,19 +184,18 @@ def _load_nvd_index() -> Dict[str, dict]:
             _NVD_INDEX = json.load(f)
     return _NVD_INDEX
 
+
 def _load_kev_index() -> Dict[str, str]:
     global _KEV_INDEX
     if _KEV_INDEX is None:
         print("Loading KEV list into memory...")
         kev_data = json.load(open(KEV_JSON, "r", encoding="utf-8"))
         # KEV feed may be list of entries with "cveID" and "dateAdded"
-        _KEV_INDEX = {
-            entry["cveID"]: entry.get("dateAdded", "")
-            for entry in kev_data
-        }
+        _KEV_INDEX = {entry["cveID"]: entry.get("dateAdded", "") for entry in kev_data}
     return _KEV_INDEX
 
-def search_cves_by_software(vendor: str, product: str, version: Optional[str]=None) -> List[str]:
+
+def search_cves_by_software(vendor: str, product: str, version: Optional[str] = None) -> List[str]:
     """
     Return CVE IDs matching the given software fingerprints.
     Simple substring match in description. Caps result to 25.
@@ -207,6 +211,7 @@ def search_cves_by_software(vendor: str, product: str, version: Optional[str]=No
                 break
     return results
 
+
 def lookup_cve(cve_id: str) -> dict:
     """
     Return the full CVE record dict for a CVE ID, or an error dict.
@@ -214,16 +219,15 @@ def lookup_cve(cve_id: str) -> dict:
     idx = _load_nvd_index()
     return idx.get(cve_id, {"id": cve_id, "error": "not found in subset"})
 
+
 def enrich_with_kev(cve_id: str) -> dict:
     """
     Return whether the CVE is on CISA's Known-Exploited Vulnerabilities list,
     plus the date it was added.
     """
     kev = _load_kev_index()
-    return {
-        "kev_listed": cve_id in kev,
-        "date_added": kev.get(cve_id, None)
-    }
+    return {"kev_listed": cve_id in kev, "date_added": kev.get(cve_id, None)}
+
 
 # --------------- Main CLI ---------------
 

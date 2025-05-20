@@ -9,6 +9,7 @@ import pandas as pd
 
 DB_PATH = "data/incident_analysis.db"
 
+
 @st.cache_data
 def load_data():
     conn = sqlite3.connect(DB_PATH)
@@ -18,6 +19,7 @@ def load_data():
     # Parse created_at, rename for consistency with your filters
     df["incident_timestamp"] = pd.to_datetime(df["created_at"])
     return df
+
 
 st.set_page_config(page_title="Incident Analysis DB", layout="wide")
 st.title("📊 Incident Analysis Browser")
@@ -33,13 +35,15 @@ tab1, tab2 = st.tabs(["🔍 Incidents", "⚙️ Run Metadata"])
 # Sidebar filters
 with st.sidebar:
     st.header("🔍 Filters")
-    selected_request = st.selectbox("Filter by Request ID", ["All"] + sorted(df["request_id"].unique().tolist()))
-    
+    selected_request = st.selectbox(
+        "Filter by Request ID", ["All"] + sorted(df["request_id"].unique().tolist())
+    )
+
     # Get min/max risk scores from data
     min_risk = float(df["llm_risk_score"].min())
     max_risk = float(df["llm_risk_score"].max())
     risk_range = st.slider("Risk Level", min_risk, max_risk, (min_risk, max_risk), 0.01)
-    
+
     # Get min/max dates from data
     min_date = df["incident_timestamp"].dt.date.min()
     max_date = df["incident_timestamp"].dt.date.max()
@@ -55,10 +59,10 @@ with tab1:
 
     try:
         filtered = filtered[
-            (filtered["llm_risk_score"] >= risk_range[0]) &
-            (filtered["llm_risk_score"] <= risk_range[1]) &
-            (filtered["incident_timestamp"].dt.date >= date_range[0]) &
-            (filtered["incident_timestamp"].dt.date <= date_range[1])
+            (filtered["llm_risk_score"] >= risk_range[0])
+            & (filtered["llm_risk_score"] <= risk_range[1])
+            & (filtered["incident_timestamp"].dt.date >= date_range[0])
+            & (filtered["incident_timestamp"].dt.date <= date_range[1])
         ]
     except Exception as e:
         st.error(f"Error applying filters: {str(e)}")
@@ -69,11 +73,15 @@ with tab1:
         st.warning("No incidents found matching the selected filters.")
     else:
         st.subheader(f"Found {len(filtered)} incidents")
-        st.dataframe(filtered[["incident_id", "incident_timestamp", "llm_risk_score", "request_id"]])
+        st.dataframe(
+            filtered[["incident_id", "incident_timestamp", "llm_risk_score", "request_id"]]
+        )
 
         # Details viewer
         st.markdown("---")
-        selected = st.selectbox("Select an incident to view full JSON", filtered["incident_id"].tolist())
+        selected = st.selectbox(
+            "Select an incident to view full JSON", filtered["incident_id"].tolist()
+        )
         if selected:  # Only show details if an incident is selected
             record = filtered[filtered["incident_id"] == selected].iloc[0]
 
@@ -104,18 +112,28 @@ with tab2:
         else:
             # parse timestamp
             runs["run_timestamp"] = pd.to_datetime(runs["created_at"])
-            
+
             # Format duration as minutes:seconds
-            runs["duration"] = runs["duration_seconds"].apply(lambda x: f"{int(x//60)}:{int(x%60):02d}")
-            
+            runs["duration"] = runs["duration_seconds"].apply(
+                lambda x: f"{int(x//60)}:{int(x%60):02d}"
+            )
+
             # Display metadata with better formatting
             st.dataframe(
-                runs[[
-                    "request_id", "start_index", "batch_size",
-                    "input_tokens", "output_tokens", "total_tokens",
-                    "tools_called", "error_count", "duration",
-                    "run_timestamp"
-                ]].sort_values("run_timestamp", ascending=False)
+                runs[
+                    [
+                        "request_id",
+                        "start_index",
+                        "batch_size",
+                        "input_tokens",
+                        "output_tokens",
+                        "total_tokens",
+                        "tools_called",
+                        "error_count",
+                        "duration",
+                        "run_timestamp",
+                    ]
+                ].sort_values("run_timestamp", ascending=False)
             )
     except Exception as e:
         st.error(f"Error loading run metadata: {str(e)}")
