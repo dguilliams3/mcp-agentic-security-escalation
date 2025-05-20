@@ -64,7 +64,7 @@ def setup_logger(name='main_security_agent_server', log_file='logs/server.log'):
     # File handler with UTF-8 encoding
     try:
         file_handler = RotatingFileHandler(log_file, maxBytes=10485760,
-                                         backupCount=5, encoding='utf-8')
+                                         backupCount=5, encoding='utf-8', delay=True)
         file_handler.setLevel(log_level)
         
         file_formatter = logging.Formatter(
