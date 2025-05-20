@@ -1,0 +1,64 @@
+.
+├── AI Engineer Take-Home Exercise_ Gen AI Agent for Contextual CVE Analysis.pdf
+├── Context Summaries
+├── RADSecurity_Security_Agent-TakeHome.ipynb
+├── README.md
+├── README_GEMINI.md
+├── __init__.py
+├── __pycache__
+├── archive
+├── data
+│   ├── dummy_agent_incident_analyses.json # Synthetic incident analyses for demo's sake
+│   ├── dummy_incidents.json # Synthetic historical incidents for demo's sake
+│   ├── incident_analysis.db # SQLite database
+│   ├── incidents.json # Actual input data, from RAD Security
+│   ├── kev.json # Retrieved data via setup/download_cve_data.py
+│   ├── nvd_subset.json # Isolated data via setup/download_cve_data.py
+│   ├── nvdcve-1.1-2025.json # Uzipped via setup/download_cve_data.py
+│   ├── nvdcve-1.1-2025.json.zip # Retrieved data via setup/download_cve_data.py
+│   └── vectorstore # FAISS indexes
+│       ├── historical_incidents # Dummy historical incidents + actual incidents (added upon analysis)
+│       │   ├── index.faiss
+│       │   └── index.pkl
+│       ├── kev # Generated KEV data index
+│       │   ├── index.faiss
+│       │   └── index.pkl
+│       └── nvd # NVD data index
+│           ├── index.faiss
+│           └── index.pkl
+├── dev
+│   ├── incident_dashboard.py # Streamlit app to view SQLite database
+│   └── query_db.py # Helper to query SQLite database
+├── examples # Posterity, early experiments with MCP server usage
+├── experimental # Posterity, early experiments with agents using MCP tools
+├── logs
+│   ├── server.log
+│   └── timing_metrics.log
+├── main_security_agent_server.py # FastAPI server, hostss the main agent/LLM logic
+├── mcp_cve_server.py # Hosts the tools used by the agent, called as a subprocess in main_security_agent_server.py
+├── pyproject.toml
+├── pytest.ini
+├── requirements.txt
+├── run_analysis.py # Main script to run the analysis, calls main_security_agent_server.py asynchronously
+├── setup
+│   ├── build_dummy_analyses_index.py # Builds the dummy analyses index
+│   ├── build_faiss_KEV_and_NVD_indexes.py # Builds the KEV and NVD indexes
+│   ├── build_historical_incident_analyses_index.py # Builds the historical incidents index
+│   ├── download_cve_data.py # Downloads the CVE data
+│   └── README.md # General instructions for initial setup
+├── tests # Optional, helpful in early discovery and development
+│   ├── __init__.py
+│   ├── __pycache__
+│   ├── test_decorators.py
+│   └── test_mcp_cve_server.py
+├── tree_structure.txt # This file for sanity's sake
+├── utils # Main utility functions that power the project
+│   ├── __init__.py
+│   ├── __pycache__
+│   ├── datastore_utils.py
+│   ├── decorators.py
+│   ├── flatteners.py
+│   ├── logging_utils.py
+│   ├── prompt_utils.py
+│   └── retrieval_utils.py
+└── uv.lock
