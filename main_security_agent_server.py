@@ -3,6 +3,7 @@ import os
 import asyncio
 
 from utils import logging_utils
+
 # Immidiately set the event loop policy to the ProactorEventLoop if on Windows
 if os.name == "nt":
     # on Windows, use the ProactorEventLoop so subprocesses work
@@ -28,6 +29,7 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 
 # FastAPI Imports
 from fastapi import Depends, FastAPI, HTTPException
+
 # Local imports
 from utils.decorators import timing_metric, cache_result
 from utils.logging_utils import setup_logger
@@ -35,18 +37,24 @@ from utils.retrieval_utils import (
     add_incident_to_faiss_history_index,
     get_incident,
     batch_match_incident_to_cves,
-    batch_get_historical_context
+    batch_get_historical_context,
 )
-from utils.datastore_utils import init_db, save_incident_and_analysis_to_sqlite_db, save_run_metadata
+from utils.datastore_utils import (
+    init_db,
+    save_incident_and_analysis_to_sqlite_db,
+    save_run_metadata,
+)
 from utils.prompt_utils import generate_prompt, parser, AnalysisRequest, default_query
 
 
-MCP_SERVER_NAME = None # We set this in the lifespan
-embeddings = None # We set this in the lifespan
-server_parameters = None # We set this in the lifespan
+MCP_SERVER_NAME = None  # We set this in the lifespan
+embeddings = None  # We set this in the lifespan
+server_parameters = None  # We set this in the lifespan
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost")
 redis = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
 query = default_query
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Startup
@@ -75,8 +83,10 @@ async def lifespan(_: FastAPI):
     # Shutdown (if needed)
     logger.info("Shutting down...")
 
+
 # Update the FastAPI app initialization to use the lifespan
 app = FastAPI(title="MCP CVE Analysis Agent API", lifespan=lifespan)
+
 
 async def claim_request_id(request: AnalysisRequest):
     """Ensure we don't process the same request twice by capturing the request_id in Redis"""
@@ -84,8 +94,7 @@ async def claim_request_id(request: AnalysisRequest):
     ok = await redis.setnx(key, "1")
     if not ok:
         raise HTTPException(
-            status_code=409,
-            detail=f"Request {request.request_id!r} is already processed."
+            status_code=409, detail=f"Request {request.request_id!r} is already processed."
         )
     await redis.expire(key, 3600)
 
@@ -96,18 +105,22 @@ async def ask_agent(agent, query: str):
     logger.info("Executing agent query:")
     logger.debug(f"Query: {query}")
     # Use invoke with proper message format and await the response
-    response = await agent.ainvoke({ "messages": query })
+    response = await agent.ainvoke({"messages": query})
 
     # Get the final AI message (the actual analysis)
-    final_message = next(msg for msg in reversed(response["messages"])
-                        if isinstance(msg, AIMessage) and msg.content)
+    final_message = next(
+        msg for msg in reversed(response["messages"]) if isinstance(msg, AIMessage) and msg.content
+    )
     logger.debug(f"Final message: {final_message}")
     # Return both the final message and the response json with metadata
     return final_message, response
 
+
 @timing_metric
 @cache_result(ttl_seconds=3600)
-async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch_size: int = 5, request_id: str = None):
+async def ask_mcp_agent(
+    server_parameters, model, query, start_index: int, batch_size: int = 5, request_id: str = None
+):
     start_ts = time.perf_counter()
     error_count = 0
     try:
@@ -116,9 +129,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
             logger.info("Server connection established!")
             # Initialize client session for communication
             async with ClientSession(
-                read,
-                write,
-                read_timeout_seconds=timedelta(seconds=300)
+                read, write, read_timeout_seconds=timedelta(seconds=300)
             ) as session:
                 try:
                     logger.info("Initializing client session...")
@@ -138,9 +149,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
 
                 logger.info("Querying KEV/NVD indexes...")
                 batch_faiss_results = batch_match_incident_to_cves(
-                    batch_size=batch_size,
-                    start_index=start_index,
-                    top_k=3
+                    batch_size=batch_size, start_index=start_index, top_k=3
                 )
                 logger.info("KEV/NVD indexes queried successfully!")
                 logger.debug(f"Batch FAISS results: {batch_faiss_results}")
@@ -156,7 +165,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                 logger.info("Querying historical context...")
                 historical_faiss_results = batch_get_historical_context(
                     incident_ids=incident_ids,  # Use the specific incident IDs
-                    top_k=3  # Get top 3 similar incidents for each
+                    top_k=3,  # Get top 3 similar incidents for each
                 )
                 logger.info("Historical context queried successfully!")
                 logger.debug(f"Historical context results: {historical_faiss_results}")
@@ -188,53 +197,89 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                                 for incident in response_data.get("incidents", []):
                                     try:
                                         # Validate each incident individually
-                                        if all(key in incident for key in ["incident_id", "incident_summary", "cve_ids", 
-                                                                         "incident_risk_level", "incident_risk_level_explanation"]):
+                                        if all(
+                                            key in incident
+                                            for key in [
+                                                "incident_id",
+                                                "incident_summary",
+                                                "cve_ids",
+                                                "incident_risk_level",
+                                                "incident_risk_level_explanation",
+                                            ]
+                                        ):
                                             for cve in incident["cve_ids"]:
-                                                if not all(key in cve for key in ["cve_id", "cve_summary", "cve_relevance", "cve_risk_level"]):
-                                                    logger.warning(f"Skipping malformed CVE entry in incident {incident['incident_id']}")
+                                                if not all(
+                                                    key in cve
+                                                    for key in [
+                                                        "cve_id",
+                                                        "cve_summary",
+                                                        "cve_relevance",
+                                                        "cve_risk_level",
+                                                    ]
+                                                ):
+                                                    logger.warning(
+                                                        f"Skipping malformed CVE entry in incident {incident['incident_id']}"
+                                                    )
                                                     continue
                                             valid_incidents.append(incident)
                                     except Exception as incident_error:
-                                        logger.warning(f"Skipping malformed incident: {str(incident_error)}")
+                                        logger.warning(
+                                            f"Skipping malformed incident: {str(incident_error)}"
+                                        )
                                         continue
-                                
+
                                 if valid_incidents:
-                                    logger.info(f"Successfully extracted {len(valid_incidents)} valid incidents from malformed response")
+                                    logger.info(
+                                        f"Successfully extracted {len(valid_incidents)} valid incidents from malformed response"
+                                    )
                                     # Create a new analysis list with only valid incidents
                                     response_data["incidents"] = valid_incidents
                                     analysis_list = parser.parse(json.dumps(response_data))
                                 else:
                                     raise ValueError("No valid incidents found in response")
                             except Exception as extract_error:
-                                logger.error(f"Failed to extract valid incidents: {str(extract_error)}")
+                                logger.error(
+                                    f"Failed to extract valid incidents: {str(extract_error)}"
+                                )
                                 raise
 
                         # Save each incident analysis
-                        logger.info(f"Saving {len(analysis_list.incidents)} incident analyses to database and adding historical context to FAISS index...")
+                        logger.info(
+                            f"Saving {len(analysis_list.incidents)} incident analyses to database and adding historical context to FAISS index..."
+                        )
                         for analysis in analysis_list.incidents:
                             # Get the incident data and add to historical data FAISS index for future use
-                            logger.debug(f"Getting incident data for incident_id: {analysis.incident_id}...")
+                            logger.debug(
+                                f"Getting incident data for incident_id: {analysis.incident_id}..."
+                            )
                             incident = get_incident(analysis.incident_id)
                             # Check if it's found, and if so, add to historical data FAISS index
                             if incident.get("found"):
                                 logger.debug("Incident found data found!")
-                                logger.debug(f"Adding incident to historical data FAISS index for incident_id: {analysis.incident_id}...")
+                                logger.debug(
+                                    f"Adding incident to historical data FAISS index for incident_id: {analysis.incident_id}..."
+                                )
                                 incident_data = incident["incident_data"]
-                                await add_incident_to_faiss_history_index(incident_data, analysis.model_dump())
+                                await add_incident_to_faiss_history_index(
+                                    incident_data, analysis.model_dump()
+                                )
                             else:
-                                logger.error(f"Incident not found for incident_id: {analysis.incident_id}")
+                                logger.error(
+                                    f"Incident not found for incident_id: {analysis.incident_id}"
+                                )
                                 incident_data = None
 
                             # Here, we save both the incident and analysis to a database for retrieval, lineage, reporting, etc. with the request_id as the primary key
                             # Note that we are saving even if we don't find the incident!
-                            logger.info(f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {analysis.incident_id}...")
+                            logger.info(
+                                f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {analysis.incident_id}..."
+                            )
                             save_incident_and_analysis_to_sqlite_db(
                                 request_id=request_id,
                                 incident_id=analysis.incident_id,
                                 model_name=model.name,
-                                incident=incident_data, # We save the incident data itself since the incident object contains metadata from the get_incident() call
-                                analysis=analysis.model_dump()
+                                incident=incident_data,  # We save the incident data itself since the incident object contains metadata from the get_incident() call
+                                analysis=analysis.model_dump(),
                             )
                 except Exception as e:
                     logger.error(f"Error processing analysis: {str(e)}")
@@ -242,9 +287,10 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
 
                 # Log results
                 logger.info("Processing complete!")
-                logger.debug("Response messages metadata: %s",
-                    [(m.id, getattr(m, "additional_kwargs", {}))
-                    for m in response["messages"]])
+                logger.debug(
+                    "Response messages metadata: %s",
+                    [(m.id, getattr(m, "additional_kwargs", {})) for m in response["messages"]],
+                )
     except Exception as e:
         error_count += 1
         logger.debug(f"Added error {e} to error count: {error_count}")
@@ -264,7 +310,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                 "output_tokens": usage_metadata.get("output_tokens"),
                 "total_tokens": usage_metadata.get("total_tokens"),
                 "input_token_details": usage_metadata.get("input_token_details"),
-                "output_token_details": usage_metadata.get("output_token_details")
+                "output_token_details": usage_metadata.get("output_token_details"),
             }
         logger.debug(f"Usage metrics: {usage_metrics}")
 
@@ -279,13 +325,13 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
 
         # finally save the run‐level row
         save_run_metadata(
-            request_id     = request_id,
-            start_index    = start_index,
-            batch_size     = batch_size,
-            usage_metrics  = usage_metrics,
-            tools          = tools,
-            duration       = duration,
-            error_count    = error_count
+            request_id=request_id,
+            start_index=start_index,
+            batch_size=batch_size,
+            usage_metrics=usage_metrics,
+            tools=tools,
+            duration=duration,
+            error_count=error_count,
         )
 
 
@@ -303,11 +349,16 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
         try:
             openai_api_key = request.openai_api_key
             if not openai_api_key:
-                logger.info("OPENAI_API_KEY not found in request, checking environment variables...")
-                openai_api_key = os.getenv("OPENAI_API_KEY","")
+                logger.info(
+                    "OPENAI_API_KEY not found in request, checking environment variables..."
+                )
+                openai_api_key = os.getenv("OPENAI_API_KEY", "")
                 if not openai_api_key:
                     logger.error("OPENAI_API_KEY not found in environment variables either!")
-                    raise HTTPException(status_code=401, detail="OPENAI_API_KEY not included in request and not found in environment variables.")
+                    raise HTTPException(
+                        status_code=401,
+                        detail="OPENAI_API_KEY not included in request and not found in environment variables.",
+                    )
 
             model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
             logger.info(f"Model {model_name} initialized successfully!")
@@ -321,13 +372,13 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
             model=model,
             query=query,
             start_index=request.start_index,
-            batch_size=request.batch_size
+            batch_size=request.batch_size,
         )
 
         return {
             "status": "success",
             "request_id": request.request_id,
-            "message": f"Successfully processed {request.batch_size} incidents starting at index {request.start_index}"
+            "message": f"Successfully processed {request.batch_size} incidents starting at index {request.start_index}",
         }
     except Exception as e:
         # this will print the full traceback to your console
@@ -335,8 +386,9 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
         # then turn it into a 500 so your client still sees 500
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error, check server logs (request_id={request.request_id})"
+            detail=f"Internal server error, check server logs (request_id={request.request_id})",
         )
+
 
 @app.get("/health", tags=["Internal"])
 async def health_check():
@@ -346,6 +398,8 @@ async def health_check():
     """
     return {"status": "ok"}
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

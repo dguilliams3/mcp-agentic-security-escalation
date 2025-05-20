@@ -15,7 +15,7 @@ import asyncio
 from datetime import datetime, UTC
 import msvcrt  # Windows-specific file locking
 
-BASE_DIR = Path(__file__).parent.parent        # utils/ ➜ project root
+BASE_DIR = Path(__file__).parent.parent  # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
 KEV_FAISS = None
 NVD_FAISS = None
@@ -30,6 +30,7 @@ logger = setup_logger("retrieval_utils")
 # =========================================================================
 # These functions handle the initialization of embeddings and vector indexes
 # for semantic search across vulnerability databases
+
 
 @timing_metric
 def initialize_openai_embeddings():
@@ -56,6 +57,7 @@ def initialize_openai_embeddings():
     logger.info("Initializing OpenAI embeddings...")
     embeddings = OpenAIEmbeddings()
     logger.info("OpenAI embeddings initialized!")
+
 
 @timing_metric
 def initialize_faiss_indexes():
@@ -86,21 +88,23 @@ def initialize_faiss_indexes():
         initialize_openai_embeddings()
 
     logger.info("Loading KEV FAISS index...")
-    KEV_FAISS = FAISS.load_local(DATA_DIR / "kev", embeddings,
-                              allow_dangerous_deserialization=True)
+    KEV_FAISS = FAISS.load_local(DATA_DIR / "kev", embeddings, allow_dangerous_deserialization=True)
     logger.info("KEV FAISS index loaded!")
     logger.info("Loading NVD FAISS index...")
-    NVD_FAISS = FAISS.load_local(DATA_DIR / "nvd", embeddings,
-                              allow_dangerous_deserialization=True)
+    NVD_FAISS = FAISS.load_local(DATA_DIR / "nvd", embeddings, allow_dangerous_deserialization=True)
     logger.info("NVD FAISS index loaded!")
     logger.info("Loading Incident Analysis History FAISS index...")
-    INCIDENT_HISTORY_FAISS = FAISS.load_local(DATA_DIR / "incident_analysis_history", embeddings,
-                               allow_dangerous_deserialization=True)
+    INCIDENT_HISTORY_FAISS = FAISS.load_local(
+        DATA_DIR / "incident_analysis_history", embeddings, allow_dangerous_deserialization=True
+    )
     logger.info("Incident Analysis History FAISS index loaded!")
+
+
 # =========================================================================
 # CORE SEARCH UTILITY FUNCTIONS
 # =========================================================================
 # Provide low-level search capabilities using FAISS vector stores
+
 
 @timing_metric
 def _search(
@@ -109,7 +113,7 @@ def _search(
     k: int = 5,
     use_mmr: bool = True,
     lambda_mult: float = 0.7,
-    fetch_k: int = None
+    fetch_k: int = None,
 ) -> List[Dict]:
     """
     Perform a semantic search on a given FAISS vector store.
@@ -167,10 +171,11 @@ def _search(
         meta = doc.metadata.copy()
         meta["variance"] = float(score)
         # Remove newlines, replace multiple spaces with single space, and truncate
-        meta["preview"] = ' '.join(doc.page_content.replace('\n', ' ').split())[:120]
+        meta["preview"] = " ".join(doc.page_content.replace("\n", " ").split())[:120]
         out.append(meta)
 
     return out
+
 
 def search_text(
     text: str,
@@ -219,7 +224,7 @@ def search_text(
         hits = store.max_marginal_relevance_search_with_score_by_vector(
             query_vec,
             k=k,
-            fetch_k=2*k,
+            fetch_k=2 * k,
             lambda_mult=lambda_mult,
         )
     else:
@@ -233,12 +238,16 @@ def search_text(
         out.append(m)
     return out
 
+
 # =========================================================================
 # INCIDENT RETRIEVAL AND MANAGEMENT FUNCTIONS
 # =========================================================================
 # Handle retrieving and listing incident data
 
-def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 0) -> Dict[str, Any]:
+
+def list_incident_ids(
+    limit: Optional[int] = None, start_index: Optional[int] = 0
+) -> Dict[str, Any]:
     """Get a list of incident IDs, optionally limited to a specific count and starting index.
     Returns most recent first.
 
@@ -257,10 +266,10 @@ def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 
         debug_info = {
             "attempted_path": str(data_file.absolute()),
             "file_exists": data_file.exists(),
-            "current_working_dir": str(Path.cwd())
+            "current_working_dir": str(Path.cwd()),
         }
 
-        with open(data_file, 'r') as f:
+        with open(data_file, "r") as f:
             incidents = json.load(f)
 
         incident_ids = [incident["incident_id"] for incident in incidents]
@@ -271,7 +280,7 @@ def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 
 
         # If limit specified, return that many incidents from start_index
         if limit and limit > 0:
-            incident_ids = incident_ids[start_index:start_index + limit]
+            incident_ids = incident_ids[start_index : start_index + limit]
         else:
             # Otherwise return all incidents from start_index
             incident_ids = incident_ids[start_index:]
@@ -283,36 +292,24 @@ def list_incident_ids(limit: Optional[int] = None, start_index: Optional[int] = 
                 **debug_info,
                 "num_incidents_loaded": len(incidents),
                 "start_index": start_index,
-                "num_incidents_returned": len(incident_ids)
-            }
+                "num_incidents_returned": len(incident_ids),
+            },
         }
     except FileNotFoundError:
         return {
             "success": False,
             "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": "File not found"
-            }
+            "debug_info": {**debug_info, "error": "File not found"},
         }
     except json.JSONDecodeError as e:
         return {
             "success": False,
             "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": f"JSON decode error\n{e}"
-            }
+            "debug_info": {**debug_info, "error": f"JSON decode error\n{e}"},
         }
     except Exception as e:
-        return {
-            "success": False,
-            "incident_ids": [],
-            "debug_info": {
-                **debug_info,
-                "error": str(e)
-            }
-        }
+        return {"success": False, "incident_ids": [], "debug_info": {**debug_info, "error": str(e)}}
+
 
 def get_incident(incident_id: str) -> Dict[str, Any]:
     """Get full details of a specific incident.
@@ -325,7 +322,7 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
     """
     try:
         data_file = Path("data/incidents.json")
-        with open(data_file, 'r') as f:
+        with open(data_file, "r") as f:
             incidents = json.load(f)
 
         # Find the specific incident
@@ -339,32 +336,22 @@ def get_incident(incident_id: str) -> Dict[str, Any]:
                     "timestamp": incident.get("timestamp"),
                     "num_affected_assets": len(incident.get("affected_assets", [])),
                     "num_ttps": len(incident.get("observed_ttps", [])),
-                    "num_iocs": len(incident.get("indicators_of_compromise", []))
-                }
+                    "num_iocs": len(incident.get("indicators_of_compromise", [])),
+                },
             }
         else:
-            return {
-                "found": False,
-                "error": "Incident not found",
-                "incident_id": incident_id
-            }
+            return {"found": False, "error": "Incident not found", "incident_id": incident_id}
     except FileNotFoundError:
-        return {
-            "found": False,
-            "error": "Incident database not found",
-            "incident_id": incident_id
-        }
+        return {"found": False, "error": "Incident database not found", "incident_id": incident_id}
     except Exception as e:
-        return {
-            "found": False,
-            "error": str(e),
-            "incident_id": incident_id
-        }
+        return {"found": False, "error": str(e), "incident_id": incident_id}
+
 
 # =========================================================================
 # SEMANTIC MATCHING FUNCTIONS
 # =========================================================================
 # Perform semantic matching of incidents against vulnerability databases
+
 
 @timing_metric
 def semantic_match_incident(
@@ -420,13 +407,18 @@ def semantic_match_incident(
 
     # Only search NVD if KEV results aren't strong enough
     if lowest_kev_variance < kev_threshold:
-        logger.info(f"KEV variance {lowest_kev_variance:.3f} below threshold {kev_threshold}, skipping NVD search")
-        nvd_hits = [f"Kev varaince of {lowest_kev_variance} is satisfactory enough to skip searching NVD"]
+        logger.info(
+            f"KEV variance {lowest_kev_variance:.3f} below threshold {kev_threshold}, skipping NVD search"
+        )
+        nvd_hits = [
+            f"Kev varaince of {lowest_kev_variance} is satisfactory enough to skip searching NVD"
+        ]
     else:
         logger.info("KEV score above threshold, searching NVD database")
         nvd_hits = semantic_match_incident_nvd(incident, k_nvd, use_mmr, lambda_mult)
 
     return {"kev_candidates": kev_hits, "nvd_candidates": nvd_hits}
+
 
 @timing_metric
 def semantic_match_incident_kev(
@@ -479,6 +471,7 @@ def semantic_match_incident_kev(
 
     return kev_hits
 
+
 @timing_metric
 def semantic_match_incident_nvd(
     incident: dict,
@@ -530,13 +523,17 @@ def semantic_match_incident_nvd(
 
     return nvd_hits
 
+
 # =========================================================================
 # BATCH PROCESSING AND ANALYSIS FUNCTIONS
 # =========================================================================
 # Handle batch processing of incidents for CVE matching
 
+
 @timing_metric
-def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_k: int = 3) -> Dict[str, Any]:
+def batch_match_incident_to_cves(
+    batch_size: int = 5, start_index: int = 0, top_k: int = 3
+) -> Dict[str, Any]:
     """
     Batch process incidents to find related CVEs using semantic matching.
 
@@ -574,7 +571,7 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
     if not incident_list.get("success", False):
         return {
             "error": "Failed to retrieve incident list",
-            "debug_info": incident_list.get("debug_info", {})
+            "debug_info": incident_list.get("debug_info", {}),
         }
 
     incident_id_to_cve_map = []
@@ -585,19 +582,13 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
         matches = match_incident_to_cves(
             incident_id=incident_id,
             k=top_k,  # Get top_k (default of 3) matches from each source
-            use_mmr=True  # Use maximal marginal relevance to avoid near-duplicates
+            use_mmr=True,  # Use maximal marginal relevance to avoid near-duplicates
         )
 
         if "error" not in matches:
-            incident_id_to_cve_map.append({
-                "incident_id": incident_id,
-                "matches": matches
-            })
+            incident_id_to_cve_map.append({"incident_id": incident_id, "matches": matches})
         else:
-            incident_id_to_cve_map.append({
-                "incident_id": incident_id,
-                "error": matches["error"]
-            })
+            incident_id_to_cve_map.append({"incident_id": incident_id, "error": matches["error"]})
 
     return {
         "success": True,
@@ -605,9 +596,10 @@ def batch_match_incident_to_cves(batch_size: int = 5, start_index: int = 0, top_
         "metadata": {
             "batch_size": batch_size,
             "start_index": start_index,
-            "incidents_processed": len(incident_id_to_cve_map)
-        }
+            "incidents_processed": len(incident_id_to_cve_map),
+        },
     }
+
 
 @timing_metric
 def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -> dict:
@@ -644,11 +636,12 @@ def match_incident_to_cves(incident_id: str, k: int = 5, use_mmr: bool = True) -
         inc,
         k_kev=k,
         k_nvd=k,
-        use_mmr=use_mmr,      # pass through flag
+        use_mmr=use_mmr,  # pass through flag
     )
     # result looks like {"kev_candidates":[{…}], "nvd_candidates":[{…}]}
 
     return {"incident_id": incident_id, **result}
+
 
 @timing_metric
 def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dict[str, Any]:
@@ -691,60 +684,63 @@ def batch_get_historical_context(incident_ids: List[str], top_k: int = 3) -> Dic
                 k=top_k,
                 use_mmr=True,
                 incident_fields=["incident_id", "similarity"],
-                analysis_fields=["incident_risk_level", "incident_summary", "cve_ids", "incident_risk_level_explanation"]
+                analysis_fields=[
+                    "incident_risk_level",
+                    "incident_summary",
+                    "cve_ids",
+                    "incident_risk_level_explanation",
+                ],
             )
 
             # Get the actual analyses from the database for the similar incidents
-            similar_incident_ids = [inc["incident_id"] for inc in historical_context["similar_incidents"]]
+            similar_incident_ids = [
+                inc["incident_id"] for inc in historical_context["similar_incidents"]
+            ]
             analyses = get_incident_analyses_from_database(similar_incident_ids)
             logger.info(f"Retrieved {len(analyses)} analyses")
-            
+
             # Format the analyses properly
             formatted_analyses = {}
             for analysis in analyses:
-                incident_id = analysis['incident_id']
+                incident_id = analysis["incident_id"]
                 filtered_analysis = {
-                    'incident_risk_level': analysis.get('incident_risk_level'),
-                    'incident_summary': analysis.get('incident_summary'),
-                    'cve_ids': analysis.get('cve_ids'),
-                    'incident_risk_level_explanation': analysis.get('incident_risk_level_explanation')
+                    "incident_risk_level": analysis.get("incident_risk_level"),
+                    "incident_summary": analysis.get("incident_summary"),
+                    "cve_ids": analysis.get("cve_ids"),
+                    "incident_risk_level_explanation": analysis.get(
+                        "incident_risk_level_explanation"
+                    ),
                 }
                 if any(filtered_analysis.values()):  # Only add if we found some data
                     formatted_analyses[incident_id] = filtered_analysis
 
             # Update the historical context with the actual analyses
-            historical_context['analyses'] = formatted_analyses
+            historical_context["analyses"] = formatted_analyses
 
-            incident_id_to_context_map.append({
-                "incident_id": incident_id,
-                "historical_context": historical_context
-            })
+            incident_id_to_context_map.append(
+                {"incident_id": incident_id, "historical_context": historical_context}
+            )
         else:
-            incident_id_to_context_map.append({
-                "incident_id": incident_id,
-                "error": "Incident not found"
-            })
+            incident_id_to_context_map.append(
+                {"incident_id": incident_id, "error": "Incident not found"}
+            )
 
     return {
         "success": True,
         "results": incident_id_to_context_map,
-        "metadata": {
-            "incidents_processed": len(incident_id_to_context_map),
-            "top_k": top_k
-        }
+        "metadata": {"incidents_processed": len(incident_id_to_context_map), "top_k": top_k},
     }
+
 
 # =========================================================================
 # INCIDENT ANALYSIS HISTORY FUNCTIONS
 # =========================================================================
 # Search and retrieve historical incident analysis data
 
+
 @cache_result(ttl_seconds=3600)
 def search_incident_analysis_history(
-    query: str,
-    k: int = 5,
-    use_mmr: bool = True,
-    lambda_mult: float = 0.7
+    query: str, k: int = 5, use_mmr: bool = True, lambda_mult: float = 0.7
 ) -> List[Dict]:
     """
     Search the incident analysis history using semantic search.
@@ -788,7 +784,7 @@ def search_incident_analysis_history(
         hits = INCIDENT_HISTORY_FAISS.max_marginal_relevance_search_with_score_by_vector(
             embeddings.embed_query(query),
             k=k,
-            fetch_k=2*k,
+            fetch_k=2 * k,
             lambda_mult=lambda_mult,
         )
     else:
@@ -805,17 +801,19 @@ def search_incident_analysis_history(
     logger.info(f"Found {len(out)} similar incidents")
     return out
 
+
 # =========================================================================
 # CVE SEARCH FUNCTIONS
 # =========================================================================
 # Perform semantic searches across CVE databases
+
 
 def semantic_search_cves(
     query: str,
     sources: List[str] = ["kev", "nvd", "historical"],
     k: int = 5,
     use_mmr: bool = False,
-    lambda_mult: float = 0.7
+    lambda_mult: float = 0.7,
 ) -> Dict[str, Any]:
     """
     Perform a semantic search across CVE databases (KEV and/or NVD).
@@ -863,18 +861,17 @@ def semantic_search_cves(
         )
     return out
 
+
 # =========================================================================
 # DUMMY INCIDENT ANALYSES FUNCTIONS
 # =========================================================================
 # Search and retrieve similar incidents from dummy analyses
 
+
 @timing_metric
 @cache_result(ttl_seconds=3600)
 def search_similar_incidents(
-    incident: dict,
-    k: int = 5,
-    use_mmr: bool = True,
-    lambda_mult: float = 0.7
+    incident: dict, k: int = 5, use_mmr: bool = True, lambda_mult: float = 0.7
 ) -> List[Dict]:
     """
     Search for similar incidents in the historical incident analyses index.
@@ -920,7 +917,7 @@ def search_similar_incidents(
         hits = INCIDENT_HISTORY_FAISS.max_marginal_relevance_search_with_score_by_vector(
             embeddings.embed_query(query_text),
             k=k,
-            fetch_k=2*k,
+            fetch_k=2 * k,
             lambda_mult=lambda_mult,
         )
     else:
@@ -936,6 +933,7 @@ def search_similar_incidents(
 
     logger.info(f"Found {len(out)} similar incidents")
     return out
+
 
 @timing_metric
 @cache_result(ttl_seconds=3600)
@@ -962,7 +960,7 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
     """
     try:
         data_file = Path("data/dummy_agent_incident_analyses.json")
-        with open(data_file, 'r') as f:
+        with open(data_file, "r") as f:
             all_analyses = json.load(f)
 
         # Create a lookup dictionary for faster access
@@ -977,7 +975,7 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
                 logger.warning(f"Analysis not found for incident {incident_id}")
                 requested_analyses[incident_id] = {
                     "error": "Analysis not found",
-                    "incident_id": incident_id
+                    "incident_id": incident_id,
                 }
 
         return requested_analyses
@@ -989,6 +987,7 @@ def get_dummy_incident_analyses(incident_ids: List[str]) -> Dict[str, Dict]:
         logger.error(f"Error retrieving analyses: {str(e)}")
         return {incident_id: {"error": str(e)} for incident_id in incident_ids}
 
+
 @timing_metric
 def get_similar_incidents_with_analyses(
     incident: dict,
@@ -996,7 +995,12 @@ def get_similar_incidents_with_analyses(
     use_mmr: bool = True,
     lambda_mult: float = 0.7,
     incident_fields: List[str] = ["incident_id", "variance"],
-    analysis_fields: List[str] = ["incident_risk_level", "incident_summary", "cve_ids", "incident_risk_level_explanation"]
+    analysis_fields: List[str] = [
+        "incident_risk_level",
+        "incident_summary",
+        "cve_ids",
+        "incident_risk_level_explanation",
+    ],
 ) -> Dict[str, Any]:
     """
     Find similar incidents and retrieve their full analyses.
@@ -1028,26 +1032,21 @@ def get_similar_incidents_with_analyses(
     """
     # First find similar incidents
     similar_incidents = search_similar_incidents(
-        incident=incident,
-        k=k,
-        use_mmr=use_mmr,
-        lambda_mult=lambda_mult
+        incident=incident, k=k, use_mmr=use_mmr, lambda_mult=lambda_mult
     )
 
     # Filter similar incidents to requested fields
     filtered_incidents = []
     filtered_analyses = {}
-    
+
     for inc in similar_incidents:
         # Filter incident fields
         filtered_inc = {field: inc.get(field) for field in incident_fields if field in inc}
         filtered_incidents.append(filtered_inc)
-        
+
         # Extract analysis fields directly from the search results
         incident_id = inc["incident_id"]
-        filtered_analysis = {field: inc.get(field) 
-                           for field in analysis_fields 
-                           if field in inc}
+        filtered_analysis = {field: inc.get(field) for field in analysis_fields if field in inc}
         if filtered_analysis:  # Only add if we found some analysis fields
             filtered_analyses[incident_id] = filtered_analysis
 
@@ -1057,12 +1056,12 @@ def get_similar_incidents_with_analyses(
         logger.info(f"Retrieving analyses from database for {len(incident_ids)} incidents...")
         full_analyses = get_incident_analyses_from_database(incident_ids)
         logger.info(f"Retrieved {len(full_analyses)} analyses")
-        
+
         for analysis in full_analyses:
-            incident_id = analysis['incident_id']
-            filtered_analysis = {field: analysis.get(field) 
-                               for field in analysis_fields 
-                               if field in analysis}
+            incident_id = analysis["incident_id"]
+            filtered_analysis = {
+                field: analysis.get(field) for field in analysis_fields if field in analysis
+            }
             if filtered_analysis:  # Only add if we found some analysis fields
                 filtered_analyses[incident_id] = filtered_analysis
 
@@ -1072,19 +1071,20 @@ def get_similar_incidents_with_analyses(
         "metadata": {
             "num_incidents_found": len(filtered_incidents),
             "num_analyses_retrieved": len(filtered_analyses),
-            "search_params": {
-                "k": k,
-                "use_mmr": use_mmr,
-                "lambda_mult": lambda_mult
-            },
+            "search_params": {"k": k, "use_mmr": use_mmr, "lambda_mult": lambda_mult},
             "fields_retrieved": {
                 "incident_fields": incident_fields,
-                "analysis_fields": analysis_fields
-            }
-        }
+                "analysis_fields": analysis_fields,
+            },
+        },
     }
 
-async def write_documents_to_faiss_index(documents: list[Document], index: FAISS=INCIDENT_HISTORY_FAISS, index_location: str="data/vectorstore/historical_incidents"):
+
+async def write_documents_to_faiss_index(
+    documents: list[Document],
+    index: FAISS = INCIDENT_HISTORY_FAISS,
+    index_location: str = "data/vectorstore/historical_incidents",
+):
     """
     Write a list of documents to a FAISS index and save it to disk.
 
@@ -1095,7 +1095,7 @@ async def write_documents_to_faiss_index(documents: list[Document], index: FAISS
     Args:
         documents (list[Document]): List of Document objects to write to the index
         index (FAISS, optional): The FAISS index to write to. Defaults to INCIDENT_HISTORY_FAISS.
-        index_location (str, optional): Path where the index should be saved. 
+        index_location (str, optional): Path where the index should be saved.
             Defaults to "data/vectorstore/historical_incidents".
 
     Note:
@@ -1108,6 +1108,7 @@ async def write_documents_to_faiss_index(documents: list[Document], index: FAISS
         index.save_local(index_location)
         global INCIDENT_HISTORY_FAISS
         INCIDENT_HISTORY_FAISS = index
+
 
 @timing_metric
 async def add_incident_to_faiss_history_index(incident: dict, analysis: dict):
@@ -1129,25 +1130,25 @@ async def add_incident_to_faiss_history_index(incident: dict, analysis: dict):
     # Create a Document object from the incident and analysis
     doc = Document(
         page_content=str(incident),
-        metadata={
-            "incident_id": incident.get("incident_id", "unknown"),
-            "analysis": analysis
-        }
+        metadata={"incident_id": incident.get("incident_id", "unknown"), "analysis": analysis},
     )
 
     # Write to FAISS using async lock to handle potential concurrency issues
     await write_documents_to_faiss_index(
         index=INCIDENT_HISTORY_FAISS,
         index_location="data/vectorstore/historical_incidents",
-        documents=[doc]
+        documents=[doc],
     )
 
+
 @timing_metric
-async def save_incident_analysis_backup_json(incident_id: str, llm_response: Any, request_id: str = None):
+async def save_incident_analysis_backup_json(
+    incident_id: str, llm_response: Any, request_id: str = None
+):
     """
     Parse and save the LLM's analysis response to a local JSON backup file.
     Accepts either a JSON string or a Python dict.
-    
+
     This function creates a backup of the analysis in data/backups/incident_analyses/
     using the current date to group analyses together.
     """
@@ -1176,29 +1177,29 @@ async def save_incident_analysis_backup_json(incident_id: str, llm_response: Any
         # Save to backup directory
         backup_dir = Path("data/backups/incident_analyses")
         backup_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Use current date for filename
         current_date = datetime.now(UTC).strftime("%Y%m%d")
         backup_file = backup_dir / f"incidents_{current_date}.json"
-        
+
         # Load existing analyses if file exists
         if backup_file.exists():
-            with open(backup_file, 'r') as f:
+            with open(backup_file, "r") as f:
                 try:
                     existing_analyses = json.load(f)
                 except json.JSONDecodeError:
                     existing_analyses = {"incidents": []}
         else:
             existing_analyses = {"incidents": []}
-        
+
         # Add new analysis to the list
         existing_analyses["incidents"].append(analysis)
-        
+
         # Save updated analyses
         logger.debug(f"Saving JSON backup to {backup_file}...")
-        with open(backup_file, 'w') as f:
+        with open(backup_file, "w") as f:
             json.dump(existing_analyses, f, indent=2)
-                
+
         logger.info(f"Saved JSON backup analysis for incident {incident_id} to {backup_file}")
 
     except json.JSONDecodeError as e:
@@ -1207,6 +1208,7 @@ async def save_incident_analysis_backup_json(incident_id: str, llm_response: Any
     except Exception:
         logger.exception("Error saving incident analysis JSON backup")
         raise
+
 
 # =========================================================================
 # MAIN EXECUTION BLOCK

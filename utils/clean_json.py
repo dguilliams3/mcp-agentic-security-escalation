@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def clean_json_file(input_path, output_path):
     print(f"Reading from {input_path}")
     print(f"File exists: {input_path.exists()}")
@@ -13,7 +14,7 @@ def clean_json_file(input_path, output_path):
     try:
         # Read line by line
         print("Reading line by line:")
-        with open(input_path, 'r', encoding='utf-8') as f:
+        with open(input_path, "r", encoding="utf-8") as f:
             for i, line in enumerate(f, 1):
                 print(f"Line {i}: {repr(line[:100])}")
                 if i >= 5:  # Just show first 5 lines
@@ -21,10 +22,10 @@ def clean_json_file(input_path, output_path):
                     break
 
         # Now try to parse the whole thing
-        with open(input_path, 'r', encoding='utf-8') as f:
+        with open(input_path, "r", encoding="utf-8") as f:
             content = f.read()
             # Remove any BOM if present
-            if content.startswith('\ufeff'):
+            if content.startswith("\ufeff"):
                 print("Found BOM, removing it")
                 content = content[1:]
             # Parse JSON
@@ -38,7 +39,7 @@ def clean_json_file(input_path, output_path):
 
         # Write back with proper formatting
         print(f"Writing to {output_path}")
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         print("Done!")
@@ -56,7 +57,8 @@ def clean_json_file(input_path, output_path):
         print(f"Error type: {type(e)}")
         return False
 
+
 if __name__ == "__main__":
     input_file = Path("data/Synthetic incident dataset.json")
     output_file = Path("data/incidents.json")
-    clean_json_file(input_file, output_file) 
+    clean_json_file(input_file, output_file)

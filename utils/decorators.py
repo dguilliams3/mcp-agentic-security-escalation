@@ -9,9 +9,10 @@ from pathlib import Path
 from utils.logging_utils import setup_logger
 
 # Ensure logs directory exists
-Path('logs').mkdir(exist_ok=True)
+Path("logs").mkdir(exist_ok=True)
 
 logger = setup_logger("decorators", "logs/timing_metrics.log")
+
 
 def timing_metric(func: Callable) -> Callable:
     """Measure and log execution time of functions.
@@ -22,6 +23,7 @@ def timing_metric(func: Callable) -> Callable:
     Returns:
         Wrapped function that logs timing metrics
     """
+
     @functools.wraps(func)
     async def async_wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -50,6 +52,7 @@ def timing_metric(func: Callable) -> Callable:
 
     return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
+
 def cache_result(ttl_seconds: int = 300) -> Callable:
     """Simple in-memory cache with TTL for function results.
 
@@ -70,16 +73,15 @@ def cache_result(ttl_seconds: int = 300) -> Callable:
             # Check if cached and not expired
             if key in cache:
                 result = cache[key]
-                if time.time() - result['timestamp'] < ttl_seconds:
+                if time.time() - result["timestamp"] < ttl_seconds:
                     logger.debug(f"Cache hit for {func.__name__}")
-                    return result['data']
+                    return result["data"]
 
             # Execute function and cache result
             result = func(*args, **kwargs)
-            cache[key] = {
-                'data': result,
-                'timestamp': time.time()
-            }
+            cache[key] = {"data": result, "timestamp": time.time()}
             return result
+
         return wrapper
+
     return decorator

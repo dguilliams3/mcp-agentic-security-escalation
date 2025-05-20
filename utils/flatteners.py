@@ -47,16 +47,11 @@ def flatten_nvd(item: Dict[str, Any]) -> Document:
     cve_id = cve.get("CVE_data_meta", {}).get("ID", "UNKNOWN")
 
     # safest-access for nested description
-    desc_list = (
-        cve.get("description", {})
-        .get("description_data", [{}])
-    )
+    desc_list = cve.get("description", {}).get("description_data", [{}])
     description = desc_list[0].get("value", "")
 
     references = " | ".join(
-        ref.get("url", "")
-        for ref in cve.get("references", {})
-        .get("reference_data", [])
+        ref.get("url", "") for ref in cve.get("references", {}).get("reference_data", [])
     )
 
     text_parts = [
@@ -73,6 +68,7 @@ def flatten_nvd(item: Dict[str, Any]) -> Document:
         "last_modified": item.get("lastModifiedDate"),
     }
     return Document(page_content=page_content, metadata=metadata)
+
 
 def flatten_incident(incident: dict) -> str:
     """
@@ -102,8 +98,13 @@ def flatten_incident(incident: dict) -> str:
     lines.append("TTP IDs: " + ", ".join(t["id"] for t in incident["observed_ttps"]))
     lines.append("OS: " + ", ".join(a["os"] for a in incident["affected_assets"]))
     for ioc in incident["indicators_of_compromise"]:
-        if ioc["type"] in {"file_path","process_name","file_extension",
-                        "library_name","container_id"}:
+        if ioc["type"] in {
+            "file_path",
+            "process_name",
+            "file_extension",
+            "library_name",
+            "container_id",
+        }:
             lines.append(f"IOC: {ioc['value']}")
 
     return "\n".join(filter(None, lines))

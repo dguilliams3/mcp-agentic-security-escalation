@@ -16,10 +16,10 @@ Example:
     Basic usage of the package::
 
         from utils import setup_logger, save_incident_and_analysis_to_db
-        
+
         # Initialize logging
         logger = setup_logger()
-        
+
         # Save analysis to database
         save_incident_and_analysis_to_db(
             request_id="req_123",
@@ -38,7 +38,7 @@ from .retrieval_utils import (
     _search,
     KEV_FAISS,
     NVD_FAISS,
-    INCIDENT_HISTORY_FAISS
+    INCIDENT_HISTORY_FAISS,
 )
 from .logging_utils import setup_logger
 from .prompt_utils import (
@@ -46,7 +46,7 @@ from .prompt_utils import (
     IncidentAnalysis,
     IncidentAnalysisList,
     AnalysisRequest,
-    SYSTEM_TMPL
+    SYSTEM_TMPL,
 )
 from .clean_json import clean_json_file
 from .datastore_utils import (
@@ -58,54 +58,50 @@ from .datastore_utils import (
     RunMetadata,
     SessionLocal,
     Base,
-    engine
+    engine,
 )
 
 # Public API documentation
 __all__ = [
     # Decorators
-    'timing_metric',  # Decorator for measuring function execution time
-    'cache_result',   # Decorator for caching function results
-    
+    "timing_metric",  # Decorator for measuring function execution time
+    "cache_result",  # Decorator for caching function results
     # Flatteners
-    'flatten_kev',      # Flattens KEV (Known Exploited Vulnerabilities) data structure
-    'flatten_nvd',      # Flattens NVD (National Vulnerability Database) data structure
-    'flatten_incident', # Flattens incident data structure
-    
+    "flatten_kev",  # Flattens KEV (Known Exploited Vulnerabilities) data structure
+    "flatten_nvd",  # Flattens NVD (National Vulnerability Database) data structure
+    "flatten_incident",  # Flattens incident data structure
     # Retrieval Utils
-    'initialize_openai_embeddings',  # Initialize OpenAI embedding models for vector search
-    'initialize_faiss_indexes',     # Initialize FAISS indexes for vector search
-    '_search',               # Internal search function for vector similarity
-    'KEV_FAISS',            # FAISS index for KEV data
-    'NVD_FAISS',            # FAISS index for NVD data
-    'INCIDENT_HISTORY_FAISS',     # FAISS index for historical incident data
-    
+    "initialize_openai_embeddings",  # Initialize OpenAI embedding models for vector search
+    "initialize_faiss_indexes",  # Initialize FAISS indexes for vector search
+    "_search",  # Internal search function for vector similarity
+    "KEV_FAISS",  # FAISS index for KEV data
+    "NVD_FAISS",  # FAISS index for NVD data
+    "INCIDENT_HISTORY_FAISS",  # FAISS index for historical incident data
     # Logging Utils
-    'setup_logger',         # Configure and initialize logging system
-    
+    "setup_logger",  # Configure and initialize logging system
     # Prompt Utils
-    'generate_prompt',      # Generate AI model prompts
-    'IncidentAnalysis',     # Class for incident analysis results
-    'IncidentAnalysisList', # Class for managing multiple incident analyses
-    'AnalysisRequest',      # Class for analysis request parameters
-    'SYSTEM_TMPL',          # System template for prompt generation
+    "generate_prompt",  # Generate AI model prompts
+    "IncidentAnalysis",  # Class for incident analysis results
+    "IncidentAnalysisList",  # Class for managing multiple incident analyses
+    "AnalysisRequest",  # Class for analysis request parameters
+    "SYSTEM_TMPL",  # System template for prompt generation
     # Clean JSON Utils
-    'clean_json_file',      # Clean and validate JSON files
-    
+    "clean_json_file",  # Clean and validate JSON files
     # Datastore Utils
-    'init_db',                     # Initialize database tables
-    'save_incident_and_analysis_to_sqlite_db',  # Save incident and analysis to SQLite database
-    'save_run_metadata',           # Save run metadata to database
-    'get_incident_analyses',       # Retrieve incident analyses from database
-    'IncidentRecord',             # SQLAlchemy model for incident records
-    'RunMetadata',                # SQLAlchemy model for run metadata
-    'SessionLocal',               # SQLAlchemy session factory
-    'Base',                       # SQLAlchemy declarative base
-    'engine'                      # SQLAlchemy database engine
+    "init_db",  # Initialize database tables
+    "save_incident_and_analysis_to_sqlite_db",  # Save incident and analysis to SQLite database
+    "save_run_metadata",  # Save run metadata to database
+    "get_incident_analyses",  # Retrieve incident analyses from database
+    "IncidentRecord",  # SQLAlchemy model for incident records
+    "RunMetadata",  # SQLAlchemy model for run metadata
+    "SessionLocal",  # SQLAlchemy session factory
+    "Base",  # SQLAlchemy declarative base
+    "engine",  # SQLAlchemy database engine
 ]
 
 # Type hints for better IDE support
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .prompt_utils import IncidentAnalysis, IncidentAnalysisList, AnalysisRequest
     from .datastore_utils import IncidentRecord, RunMetadata

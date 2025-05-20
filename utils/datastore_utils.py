@@ -11,23 +11,30 @@ from utils.logging_utils import setup_logger
 logger = setup_logger("datastore_utils")
 
 # --- Configuration ---
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/incident_analysis.db")  # Swap with postgres:// URI as needed
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "sqlite:///data/incident_analysis.db"
+)  # Swap with postgres:// URI as needed
 
 # --- Setup SQLAlchemy ---
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+
 # --- Model Definition ---
 class IncidentRecord(Base):
     __tablename__ = "incident_analysis"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    request_id = Column(String, index=True)  # Uniquely identifies this *analysis*, not just incident
-    incident_id = Column(String, index=True)       # Allows filtering or joining across repeated incidents
+    request_id = Column(
+        String, index=True
+    )  # Uniquely identifies this *analysis*, not just incident
+    incident_id = Column(
+        String, index=True
+    )  # Allows filtering or joining across repeated incidents
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    incident_raw_json = Column(Text)               # Original incident details
-    llm_analysis_json = Column(Text)               # Final analysis from the LLM
+    incident_raw_json = Column(Text)  # Original incident details
+    llm_analysis_json = Column(Text)  # Final analysis from the LLM
     llm_risk_score = Column(Float, nullable=True)  # For quick filtering/analytics
     model_name = Column(String)
 
@@ -35,26 +42,30 @@ class IncidentRecord(Base):
         Index("ix_incident_id_request", "incident_id", "request_id"),  # Fast filtering if needed
     )
 
+
 # --- Create Tables If Not Exists ---
 def init_db():
     Base.metadata.create_all(bind=engine)
 
+
 class RunMetadata(Base):
     __tablename__ = "run_metadata"
-    id               = Column(Integer, primary_key=True, autoincrement=True)
-    request_id       = Column(String, index=True, nullable=False)
-    start_index      = Column(Integer, nullable=False)
-    batch_size       = Column(Integer, nullable=False)
-    input_tokens     = Column(Integer, nullable=True)
-    output_tokens    = Column(Integer, nullable=True)
-    total_tokens     = Column(Integer, nullable=True)
-    tools_called     = Column(Text, nullable=True)    # JSON-encoded list of tool names
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    request_id = Column(String, index=True, nullable=False)
+    start_index = Column(Integer, nullable=False)
+    batch_size = Column(Integer, nullable=False)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    tools_called = Column(Text, nullable=True)  # JSON-encoded list of tool names
     duration_seconds = Column(Float, nullable=True)
-    error_count      = Column(Integer, default=0)
-    created_at       = Column(DateTime, default=lambda: datetime.now(UTC))
+    error_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
 
 def save_run_metadata(
     request_id: str,
@@ -63,7 +74,7 @@ def save_run_metadata(
     usage_metrics: dict,
     tools: list[str],
     duration: float,
-    error_count: int = 0
+    error_count: int = 0,
 ):
     session = SessionLocal()
     try:
@@ -76,25 +87,22 @@ def save_run_metadata(
             total_tokens=usage_metrics.get("total_tokens"),
             tools_called=json.dumps(tools),
             duration_seconds=duration,
-            error_count=error_count
+            error_count=error_count,
         )
         session.add(rm)
         session.commit()
     finally:
         session.close()
 
+
 # --- Insert Function ---
 def save_incident_and_analysis_to_sqlite_db(
-    request_id: str,
-    incident_id: str,
-    model_name: str,
-    incident: dict,
-    analysis: dict
+    request_id: str, incident_id: str, model_name: str, incident: dict, analysis: dict
 ):
     """
     Save both the incident and its analysis to the SQLite database.
     This is the primary storage location for incident analyses.
-    
+
     Args:
         request_id (str): Unique identifier for this analysis request
         incident_id (str): ID of the incident being analyzed
@@ -104,25 +112,34 @@ def save_incident_and_analysis_to_sqlite_db(
     """
     session = SessionLocal()
     try:
-        logger.info(f"Saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}...")
+        logger.info(
+            f"Saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}..."
+        )
         record = IncidentRecord(
             request_id=request_id,
             incident_id=incident_id,
             incident_raw_json=json.dumps(incident),
             llm_analysis_json=json.dumps(analysis),
             llm_risk_score=analysis.get("incident_risk_level", None),
-            model_name=model_name
+            model_name=model_name,
         )
         session.add(record)
         session.commit()
-        logger.info(f"Successfully saved incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}!")
+        logger.info(
+            f"Successfully saved incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}!"
+        )
     except Exception as e:
         session.rollback()
-        logger.error(f"Error saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}")
+        logger.error(
+            f"Error saving incident and analysis to SQLite database for request_id: {request_id}, incident_id: {incident_id}"
+        )
         raise e
     finally:
         session.close()
-        logger.debug(f"Closed database session for request_id: {request_id}, incident_id: {incident_id}")
+        logger.debug(
+            f"Closed database session for request_id: {request_id}, incident_id: {incident_id}"
+        )
+
 
 def get_incident_analyses_from_database(incident_ids: list[str]) -> list[dict]:
     """
@@ -150,17 +167,23 @@ def get_incident_analyses_from_database(incident_ids: list[str]) -> list[dict]:
         results = []
         for record in records:
             try:
-                incident_data = json.loads(record.incident_raw_json) if record.incident_raw_json else None
-                analysis_data = json.loads(record.llm_analysis_json) if record.llm_analysis_json else None
+                incident_data = (
+                    json.loads(record.incident_raw_json) if record.incident_raw_json else None
+                )
+                analysis_data = (
+                    json.loads(record.llm_analysis_json) if record.llm_analysis_json else None
+                )
 
-                results.append({
-                    "incident_id": record.incident_id,
-                    "incident_data": incident_data,
-                    "analysis": analysis_data,
-                    "risk_score": record.llm_risk_score,
-                    "model_name": record.model_name,
-                    "created_at": record.created_at.isoformat() if record.created_at else None
-                })
+                results.append(
+                    {
+                        "incident_id": record.incident_id,
+                        "incident_data": incident_data,
+                        "analysis": analysis_data,
+                        "risk_score": record.llm_risk_score,
+                        "model_name": record.model_name,
+                        "created_at": record.created_at.isoformat() if record.created_at else None,
+                    }
+                )
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON for incident {record.incident_id}: {e}")
                 continue
