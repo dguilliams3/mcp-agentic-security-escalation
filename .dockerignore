@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+.cursor/
+
+# Large data files that can be regenerated
+*.zip
+data/vectorstore/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Misc
+README_CLAUDE.md
+README_GEMINI.md
+RADSecurity_Complete.ipynb
+RADSecurity_Security_Agent-TakeHome.ipynb
+experimental/
+archive/ 

@@ -1,0 +1,70 @@
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-server:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - sqlite-data:/app/data
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MCP_SERVER_NAME=mcp_cve_server.py
+      - DATABASE_URL=sqlite:////app/data/incident_analysis.db
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn main_security_agent_server:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  analyzer:
+    build: .
+    volumes:
+      - .:/app
+      - sqlite-data:/app/data
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_URL=http://api-server:8000/analyze_incidents
+      - BATCH_SIZE=4
+      - CONCURRENCY=5
+      - DATABASE_URL=sqlite:////app/data/incident_analysis.db
+    depends_on:
+      api-server:
+        condition: service_healthy
+    command: python run_analysis.py
+
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - sqlite-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/incident_analysis.db
+    depends_on:
+      api-server:
+        condition: service_healthy
+    command: streamlit run dev/incident_dashboard.py --server.port 8501 --server.address 0.0.0.0
+
+volumes:
+  redis-data:
+  sqlite-data: 
+  cve-data:

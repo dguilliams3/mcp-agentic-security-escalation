@@ -13,7 +13,6 @@ from langchain.schema import Document
 from typing import Any, Dict, List
 import asyncio
 from datetime import datetime, UTC
-import msvcrt  # Windows-specific file locking
 
 BASE_DIR = Path(__file__).parent.parent  # utils/ ➜ project root
 DATA_DIR = BASE_DIR / "data" / "vectorstore"
