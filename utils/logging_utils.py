@@ -78,6 +78,7 @@ def setup_logger(name='main_security_agent_server', log_file='logs/server.log'):
         logger.addHandler(file_handler)
         
         # Log a test message at each level to verify logging is working
+        logger.info("Testing Logger Levels...")
         logger.debug("Debug logging initialized")
         logger.info("Info logging initialized")
         logger.warning("Warning logging initialized")

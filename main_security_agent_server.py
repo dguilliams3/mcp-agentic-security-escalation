@@ -1,6 +1,8 @@
 # Required imports for async operations, LangChain components, and MCP client functionality
 import os
 import asyncio
+
+from utils import logging_utils
 # Immidiately set the event loop policy to the ProactorEventLoop if on Windows
 if os.name == "nt":
     # on Windows, use the ProactorEventLoop so subprocesses work
@@ -26,39 +28,33 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 
 # FastAPI Imports
 from fastapi import Depends, FastAPI, HTTPException
-
 # Local imports
 from utils.decorators import timing_metric, cache_result
 from utils.logging_utils import setup_logger
 from utils.retrieval_utils import (
-    add_incident_to_history,
+    add_incident_to_faiss_history_index,
     get_incident,
-    save_incident_analysis,
     batch_match_incident_to_cves,
     batch_get_historical_context
 )
-from utils.datastore_utils import init_db, save_incident_and_analysis_to_db, save_run_metadata
-from utils.prompt_utils import generate_prompt, parser, AnalysisRequest
+from utils.datastore_utils import init_db, save_incident_and_analysis_to_sqlite_db, save_run_metadata
+from utils.prompt_utils import generate_prompt, parser, AnalysisRequest, default_query
 
-logger = None # We set this in the lifespan
+
 MCP_SERVER_NAME = None # We set this in the lifespan
 embeddings = None # We set this in the lifespan
 server_parameters = None # We set this in the lifespan
-
-# Initialize parser
-# parser = PydanticOutputParser(pydantic_object=IncidentAnalysisList)
-
-# model_name = os.getenv("MODEL_NAME", "gpt-4o-mini")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost")
 redis = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
-
+query = default_query
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Startup
     global logger, embeddings, MCP_SERVER_NAME, server_parameters
 
     load_dotenv()
-    logger = setup_logger()
+    # Setup root logger
+    logger = setup_logger("main_security_agent_server")
     logger.info("FastAPI application starting up...")
 
     logger.info("Initializing embeddings...")
@@ -94,54 +90,6 @@ async def claim_request_id(request: AnalysisRequest):
     await redis.expire(key, 3600)
 
 
-query = """
-I need you to help me analyze some security incidents and rank their actual severity, using identify potential CVE connections and details.
-Let's start with a small sample to test the system:
-1. Note the incident IDs and summaries you have available to you already.
-2. For each incident:
-    a.  Understand Incident Context: Reason about the affected assets, observed TTPs, and initial findings.
-    b.  Identify Relevant CVEs: Determine which CVEs are potentially relevant based on the incident context and affected software/hardware, using LLM reasoning and potentially querying data sources.
-    c.  Prioritize CVEs: Assess the risk and impact of relevant CVEs in the context of the specific incident, going beyond standard scores like CVSS.
-    d.  Generate Analysis: Provide a brief, human-readable explanation of why certain CVEs are prioritized, linking them back to the incident details.
-3. Finally, and most importantly, provide an organized list of all analyzed incidents in the following format:
-{
-    "incidents": [
-        {
-            "incident_id": "The ID of the incident that caused the error",
-            "incident_summary": "A brief summary of the incident",
-            "cve_ids": [
-                {
-                    "cve_id": "The CVE ID that is related to the incident",
-                    "cve_summary": "A brief summary of the CVE and its relation to the incident",
-                    "cve_relevance": "The estimated relevance level of the CVE match (0.0-1.0)",
-                    "cve_risk_level": "The risk level of the CVE on a scale of (0.0-1.0)"
-                }
-            ],
-            "incident_risk_level": "The risk level of the incident (0.0-1.0)",
-            "incident_risk_level_explanation": "An explanation of the rationale for the risk level assessment"
-        }
-    ]
-}
-
-Note: If any tools return an error, please give the exact response, the exception details, and any additional specific details of the error and the tool in question. Format this as a JSON object with the following keys:
-{
-    "error": "The exact error message from the tool",
-    "tool": "The name of the tool that returned the error",
-    "input_variables": "The input variables that were used to call the tool",
-    "error_details": "Any additional specific details of the error (included returned responses)"
-}
-"""
-
-# For debugging, we can use the following query:
-debug_query = """
-# I need you to help me analyze some security incidents and identify potential CVE connections. Let's start with a small sample to test the system:
-
-# First, we need to do a meta test to debug.  Please try all of the tools you have.  List what you did and what specific inputs you gave to which functions and what the reutnred value(s) or errors were.
-# Focus mainly on just getting a single incident ID, then describe your process for trying to map it to a CVE ID given the tools you have.
-
-# Actively perform the steps, always specifying exactly which functions you executed, the exact inputs, and the exact returned output or error message, you describe and give a full report of the results of what you did and what happened along the way.
-# """
-
 @timing_metric
 @cache_result(ttl_seconds=3600)
 async def ask_agent(agent, query: str):
@@ -170,11 +118,15 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
             async with ClientSession(
                 read,
                 write,
-                read_timeout_seconds=timedelta(seconds=15)
+                read_timeout_seconds=timedelta(seconds=300)
             ) as session:
-                logger.info("Initializing client session...")
-                await session.initialize()
-                logger.info("Client session initialized!")
+                try:
+                    logger.info("Initializing client session...")
+                    await session.initialize()
+                    logger.info("Client session initialized!")
+                except Exception as e:
+                    logger.error(f"Failed to initialize client session: {str(e)}")
+                    raise
                 # Load MCP tools and create ReAct agent
                 tools = await load_mcp_tools(session)
                 logger.info(f"MCP tools loaded.  Tools count: {len(tools)}")
@@ -223,17 +175,44 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                     if isinstance(final_message.content, str):
                         # Parse the response using our Pydantic model
                         logger.info("Parsing response using Pydantic model...")
-                        analysis_list = parser.parse(final_message.content)
-                        logger.info("Response parsed successfully!")
+                        try:
+                            analysis_list = parser.parse(final_message.content)
+                            logger.info("Response parsed successfully!")
+                        except Exception as parse_error:
+                            logger.error(f"Failed to parse response: {str(parse_error)}")
+                            logger.debug(f"Raw response content: {final_message.content}")
+                            # Try to extract any valid incidents from the response
+                            try:
+                                response_data = json.loads(final_message.content)
+                                valid_incidents = []
+                                for incident in response_data.get("incidents", []):
+                                    try:
+                                        # Validate each incident individually
+                                        if all(key in incident for key in ["incident_id", "incident_summary", "cve_ids", 
+                                                                         "incident_risk_level", "incident_risk_level_explanation"]):
+                                            for cve in incident["cve_ids"]:
+                                                if not all(key in cve for key in ["cve_id", "cve_summary", "cve_relevance", "cve_risk_level"]):
+                                                    logger.warning(f"Skipping malformed CVE entry in incident {incident['incident_id']}")
+                                                    continue
+                                            valid_incidents.append(incident)
+                                    except Exception as incident_error:
+                                        logger.warning(f"Skipping malformed incident: {str(incident_error)}")
+                                        continue
+                                
+                                if valid_incidents:
+                                    logger.info(f"Successfully extracted {len(valid_incidents)} valid incidents from malformed response")
+                                    # Create a new analysis list with only valid incidents
+                                    response_data["incidents"] = valid_incidents
+                                    analysis_list = parser.parse(json.dumps(response_data))
+                                else:
+                                    raise ValueError("No valid incidents found in response")
+                            except Exception as extract_error:
+                                logger.error(f"Failed to extract valid incidents: {str(extract_error)}")
+                                raise
 
                         # Save each incident analysis
                         logger.info(f"Saving {len(analysis_list.incidents)} incident analyses to database and adding historical context to FAISS index...")
                         for analysis in analysis_list.incidents:
-                            # Save the individual incident analysis.
-                            # Note: We wouldn't need this in a larger system, we'd simply use the below writing to a database/datastore instead,
-                            # but we keep it here for the sake of the demo and to show how we'd do it in a larger system.
-                            await save_incident_analysis(analysis.incident_id, analysis.model_dump())
-
                             # Get the incident data and add to historical data FAISS index for future use
                             logger.debug(f"Getting incident data for incident_id: {analysis.incident_id}...")
                             incident = get_incident(analysis.incident_id)
@@ -242,7 +221,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                                 logger.debug("Incident found data found!")
                                 logger.debug(f"Adding incident to historical data FAISS index for incident_id: {analysis.incident_id}...")
                                 incident_data = incident["incident_data"]
-                                await add_incident_to_history(incident_data, analysis.model_dump())
+                                await add_incident_to_faiss_history_index(incident_data, analysis.model_dump())
                             else:
                                 logger.error(f"Incident not found for incident_id: {analysis.incident_id}")
                                 incident_data = None
@@ -250,7 +229,7 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
                             # Here, we save both the incident and analysis to a database for retrieval, lineage, reporting, etc. with the request_id as the primary key
                             # Note that we are saving even if we don't find the incident!
                             logger.info(f"Saving incident and analysis to database for request_id: {request_id}, incident_id: {analysis.incident_id}...")
-                            save_incident_and_analysis_to_db(
+                            save_incident_and_analysis_to_sqlite_db(
                                 request_id=request_id,
                                 incident_id=analysis.incident_id,
                                 model_name=model.name,

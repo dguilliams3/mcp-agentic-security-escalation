@@ -7,8 +7,8 @@ from pathlib import Path
 from utils.decorators import timing_metric, cache_result
 from dotenv import load_dotenv
 from utils.retrieval_utils import (
-    initialize_embeddings,
-    initialize_indexes,
+    initialize_openai_embeddings,
+    initialize_faiss_indexes,
     match_incident_to_cves,
     semantic_match_incident,
     semantic_search_cves,
@@ -17,6 +17,8 @@ from utils.retrieval_utils import (
 )
 
 from utils.logging_utils import setup_logger
+import asyncio
+
 # Load environment variables
 load_dotenv()
 logger = setup_logger()
@@ -27,14 +29,13 @@ DATA_DIR = BASE_DIR / "data"
 
 KEV_ENTRIES = json.loads((DATA_DIR / "kev.json").read_text())["vulnerabilities"]
 NVD_INDEX   = json.loads((DATA_DIR / "nvd_subset.json").read_text())
-
 KEV_FAISS = None
 NVD_FAISS = None
 embeddings = None
+INCIDENT_HISTORY_FAISS = None
 
-initialize_embeddings()
-initialize_indexes()
-
+initialize_openai_embeddings()
+initialize_faiss_indexes()
 mcp = FastMCP("cve")
 
 ########################################################
@@ -90,6 +91,9 @@ def search_nvd(query: str, limit: int = 10) -> list[dict]:
     Return up to `limit` full CVE records whose fields match ALL words in `query`.
     Case-insensitive substring match over CVE ID, description, and any reference URLs.
     """
+    if NVD_FAISS is None:
+        initialize_faiss_indexes()
+
     qwords = query.lower().split()
     matches = []
     for cve_id, rec in NVD_INDEX.items():
@@ -127,6 +131,9 @@ def search_kevs(query: str, limit: int = 10) -> list[dict]:
     Case-insensitive substring match over cveID, vendorProject, product,
     vulnerabilityName, and shortDescription.
     """
+    if KEV_FAISS is None:
+        initialize_faiss_indexes()
+
     qwords = query.lower().split()
     matches = []
     for entry in KEV_ENTRIES:
@@ -155,6 +162,9 @@ def lookup_kev_by_cve_id(cve_id: str) -> dict:
     """
     Return the entire KEV entry for the given CVE ID.
     """
+    if KEV_FAISS is None:
+        initialize_faiss_indexes()
+
     for entry in KEV_ENTRIES:
         if entry.get("cveID") == cve_id:
             return entry
