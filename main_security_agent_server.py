@@ -315,7 +315,8 @@ async def ask_mcp_agent(server_parameters, model, query, start_index: int, batch
 @app.post("/analyze_incidents")
 async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(claim_request_id)):
     try:
-        logger.info(f"Request received!\nRequest_id: {request.request_id}")
+        request_id = request.request_id
+        logger.info(f"Request received!\nRequest_id: {request_id}")
         logger.debug(f"Request: {request}")
         model_name = request.model_name
         logger.info(f"Initializing Model {model_name}...")

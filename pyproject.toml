@@ -14,6 +14,7 @@ dependencies = [
     "fastapi>=0.115.12",
     "fastmcp>=2.3.3",
     "httpx>=0.28.1",
+    "ipykernel>=6.29.5",
     "langchain>=0.3.25",
     "langchain-community>=0.3.24",
     "langchain-mcp-adapters>=0.0.11",
