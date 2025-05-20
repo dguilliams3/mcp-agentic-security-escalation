@@ -218,10 +218,9 @@ export DISABLE_TIMING_METRICS=true  # Disables performance logging
 
 ## 📈 Performance Metrics
 
-- Average analysis time: < 2 seconds per incident
-- CVE matching accuracy: > 90% (validated against expert analysis)
-- Scalable to thousands of incidents per day
-- Efficient token usage through smart context management
+- Average analysis time: < 20 seconds per incident (including DB & index writing)
+- Scalable to thousands of incidents per day through intelligent decomposition and containerization w/ clustering infra
+- Efficient token usage through smart context management and prompt injection
 
 ## 🛠️ Development
 
