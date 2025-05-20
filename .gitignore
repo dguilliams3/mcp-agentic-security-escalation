@@ -56,3 +56,4 @@ archive/
 
 # Checkpoint files
 *.ipynb_checkpoints/
+data/incident_analysis.db
