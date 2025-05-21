@@ -121,6 +121,31 @@ async def ask_agent(agent, query: str):
 async def ask_mcp_agent(
     server_parameters, model, query, start_index: int, batch_size: int = 5, request_id: str = None
 ):
+    """
+    Process a batch of incidents using the MCP (Machine Context Protocol) agent.
+
+    This function:
+    1. Establishes connection with MCP server
+    2. Initializes agent with tools
+    3. Queries KEV/NVD indexes for relevant vulnerabilities
+    4. Gets historical context for similar incidents
+    5. Generates and sends prompts to the agent
+    6. Saves results to database and FAISS index
+
+    Args:
+        server_parameters: MCP server configuration
+        model: The language model to use
+        query: The query string
+        start_index: Starting index for batch processing
+        batch_size: Number of items to process in batch
+        request_id: Optional request identifier
+        
+    Returns:
+        The agent's response
+        
+    Raises:
+        HTTPException: If there are errors communicating with the MCP server
+    """
     start_ts = time.perf_counter()
     error_count = 0
     try:
@@ -339,6 +364,7 @@ async def ask_mcp_agent(
 @cache_result(ttl_seconds=3600)
 @app.post("/analyze_incidents")
 async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(claim_request_id)):
+    Returns:
     try:
         request_id = request.request_id
         logger.info(f"Request received!\nRequest_id: {request_id}")
@@ -346,42 +372,41 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
         model_name = request.model_name
         logger.info(f"Initializing Model {model_name}...")
 
-        try:
-            openai_api_key = request.openai_api_key
-            if not openai_api_key:
-                logger.info(
-                    "OPENAI_API_KEY not found in request, checking environment variables..."
-                )
-                openai_api_key = os.getenv("OPENAI_API_KEY", "")
-                if not openai_api_key:
-                    logger.error("OPENAI_API_KEY not found in environment variables either!")
-                    raise HTTPException(
-                        status_code=401,
-                        detail="OPENAI_API_KEY not included in request and not found in environment variables.",
-                    )
+        # Validate batch_size
+        if request.batch_size <= 0:
+            logger.error(f"Invalid batch_size: {request.batch_size}")
+            raise ValueError("batch_size must be greater than 0")
+        
+        # Validate API key
+        if not request.openai_api_key:
+            logger.error("Missing OpenAI API key")
+            raise HTTPException(
+                status_code=401,
+                detail="OPENAI_API_KEY is required"
+            )
+        
+        openai_api_key = request.openai_api_key
 
+        try:
             model = ChatOpenAI(openai_api_key=openai_api_key, model=model_name)
             logger.info(f"Model {model_name} initialized successfully!")
         except Exception as e:
             logger.error(f"Error initializing model: {e}")
             raise HTTPException(status_code=500, detail=f"Error initializing model: {e}")
 
-        await ask_mcp_agent(
-            request_id=request.request_id,
-            server_parameters=server_parameters,
-            model=model,
-            query=query,
-            start_index=request.start_index,
-            batch_size=request.batch_size,
-        )
-
-        return {
-            "status": "success",
-            "request_id": request.request_id,
-            "message": f"Successfully processed {request.batch_size} incidents starting at index {request.start_index}",
-        }
+        try:
+            await ask_mcp_agent(
+                request_id=request.request_id,
+                server_parameters=server_parameters,
+                model=model,
+                query=query,
+                start_index=request.start_index,
+                batch_size=request.batch_size,
+            )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
-        # this will print the full traceback to your console
+        # Catch any other unexpected errors
         logger.exception(f"Uncaught error in /analyze_incidents (request_id={request.request_id}):")
         # then turn it into a 500 so your client still sees 500
         raise HTTPException(
@@ -393,10 +418,16 @@ async def analyze_incidents(request: AnalysisRequest, _dedupe: None = Depends(cl
 @app.get("/health", tags=["Internal"])
 async def health_check():
     """
-    Simple health check endpoint.
-    Returns 200 OK with a basic status payload.
+    Basic health check endpoint to verify server status.
+    Returns server uptime.
     """
-    return {"status": "ok"}
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "uptime": time.time() - startup_time
+        }
+    )
 
 
 if __name__ == "__main__":

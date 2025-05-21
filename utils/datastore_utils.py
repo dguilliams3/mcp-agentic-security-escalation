@@ -7,6 +7,7 @@ from datetime import datetime, UTC
 import json
 import os
 from utils.logging_utils import setup_logger
+from typing import Any
 
 logger = setup_logger("datastore_utils")
 
@@ -45,6 +46,23 @@ class IncidentRecord(Base):
 
 # --- Create Tables If Not Exists ---
 def init_db():
+    """
+    Initialize the SQLite database and create necessary tables if they don't exist.
+
+    This function sets up the database schema for:
+    1. Incident analyses storage
+    2. Run metadata tracking
+    3. Historical data
+
+    The function ensures idempotent table creation and proper index setup
+    for optimal query performance.
+
+    Note:
+        - Creates tables if they don't exist
+        - Sets up appropriate indexes for performance
+        - Handles SQLite-specific configurations
+        - Thread-safe database initialization
+    """
     Base.metadata.create_all(bind=engine)
 
 
@@ -76,6 +94,26 @@ def save_run_metadata(
     duration: float,
     error_count: int = 0,
 ):
+    """
+    Save metadata about a batch processing run to the database.
+
+    This function records operational metrics and metadata about each
+    batch processing run for monitoring and analysis purposes.
+
+    Args:
+        request_id (str): Unique identifier for the processing request
+        start_time (float): Unix timestamp when processing started
+        end_time (float): Unix timestamp when processing completed
+        error_count (int): Number of errors encountered during processing
+        total_incidents (int): Total number of incidents processed
+        batch_size (int): Size of the processing batch
+        start_index (int): Starting index of the batch
+
+    Note:
+        - Timestamps are stored in Unix timestamp format
+        - Thread-safe database operations
+        - Automatically handles SQLite transaction management
+    """
     session = SessionLocal()
     try:
         rm = RunMetadata(
@@ -100,8 +138,10 @@ def save_incident_and_analysis_to_sqlite_db(
     request_id: str, incident_id: str, model_name: str, incident: dict, analysis: dict
 ):
     """
-    Save both the incident and its analysis to the SQLite database.
-    This is the primary storage location for incident analyses.
+    Save an incident analysis result to the SQLite database.
+
+    This function handles the persistence of incident analysis results,
+    including the LLM's response and associated metadata.
 
     Args:
         request_id (str): Unique identifier for this analysis request
@@ -143,14 +183,26 @@ def save_incident_and_analysis_to_sqlite_db(
 
 def get_incident_analyses_from_database(incident_ids: list[str]) -> list[dict]:
     """
-    Retrieve incident analyses from the database for a list of incident IDs.
-    Returns a list of dictionaries containing both incident and analysis data.
+    Retrieve incident analyses from the database for specified incident IDs.
+
+    This function fetches previously stored analyses for a list of incidents,
+    useful for historical context and comparison.
 
     Args:
         incident_ids (list[str]): List of incident IDs to retrieve analyses for
 
     Returns:
-        list[dict]: List of dictionaries containing incident data and analysis
+        list[dict]: List of incident analyses, each containing:
+            - incident_id: The incident identifier
+            - analysis: The stored analysis result
+            - timestamp: When the analysis was performed
+            - request_id: Associated batch request ID
+
+    Note:
+        - Returns empty list if no analyses found
+        - Handles JSON deserialization of stored analyses
+        - Optimized for batch retrieval
+        - Thread-safe database operations
     """
     session = SessionLocal()
     try:

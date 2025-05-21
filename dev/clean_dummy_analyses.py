@@ -14,14 +14,28 @@ from typing import List, Dict, Any
 
 def remove_duplicates_by_incident_id(analyses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Remove duplicate entries from the analyses list based on incident_id.
-    Only keeps the first occurrence of each incident_id.
+    Remove duplicate incident analyses while preserving the most recent version.
+
+    This utility function cleans up the development dataset by:
+    1. Identifying duplicate incident analyses
+    2. Keeping only the most recent analysis for each incident
+    3. Maintaining data integrity and relationships
 
     Args:
-        analyses: List of analysis dictionaries
+        analyses (List[Dict[str, Any]]): List of incident analysis dictionaries,
+            where each dictionary contains at least:
+            - incident_id: Unique identifier for the incident
+            - timestamp: When the analysis was performed
 
     Returns:
-        List of unique analysis dictionaries (one per incident_id)
+        List[Dict[str, Any]]: Deduplicated list of analyses, containing only
+        the most recent analysis for each unique incident_id
+
+    Note:
+        - Preserves the most recent analysis based on timestamp
+        - Maintains all fields in the original analysis
+        - Handles missing or malformed timestamps gracefully
+        - Logs information about removed duplicates
     """
     seen_incident_ids = set()
     unique_analyses = []

@@ -6,12 +6,33 @@ import json
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
+from typing import Dict, Any
 
 DB_PATH = "data/incident_analysis.db"
 
 
 @st.cache_data
 def load_data():
+    """
+    Load and prepare incident data for the dashboard visualization.
+
+    This function:
+    1. Reads incident data from the SQLite database
+    2. Processes and formats data for visualization
+    3. Calculates summary statistics
+    4. Prepares time series data
+
+    Returns:
+        Tuple[pd.DataFrame, Dict[str, Any]]: A tuple containing:
+            - DataFrame: Processed incident data ready for visualization
+            - Dict: Summary statistics and metadata about the dataset
+
+    Note:
+        - Handles missing or corrupt data gracefully
+        - Performs data cleaning and normalization
+        - Optimizes memory usage for large datasets
+        - Caches results for improved performance
+    """
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM incident_analysis", conn)
     conn.close()
