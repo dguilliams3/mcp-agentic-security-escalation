@@ -45,6 +45,20 @@ A sophisticated AI agent system designed to automate and augment the triage and 
 └─────────────────────────────────┘
 ```
 
+### 🧭 Architecture Overview (Service-Level)
+
+<details>
+<summary>Click to expand architecture diagram</summary>
+
+```mermaid
+flowchart TD
+    A[Analyzer<br>run_analysis.py] -->|REST call| B[FastAPI API Server<br>main_security_agent_server.py]
+    B -->|read/write| C[SQLite<br>incident_analysis.db]
+    B <--> D[Redis<br>deduplication/cache]
+    E[Streamlit Dashboard<br>incident_dashboard.py] -->|read-only| C
+```
+</details>
+
 ## Project Structure
 
 ```
