@@ -1,5 +1,5 @@
 [project]
-name = "mcp_agents_radsecurity"
+name = "mcp_agentic_security_escalation"
 version = "0.1.0"
 description = "MCP-based security analysis agents using LangChain"
 readme = "README.md"
