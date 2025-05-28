@@ -1,13 +1,13 @@
-# RAD Security: Architecture Documentation
+# Architecture Documentation
 
 ## System Overview
 
-The RAD Security CVE Analysis Agent is designed as a modular, scalable system that leverages AI to analyze security incidents and identify relevant CVEs. The system is built around several key components that work together to provide comprehensive security analysis.
+The Security CVE Analysis Agent is designed as a modular, scalable system that leverages AI to analyze security incidents and identify relevant CVEs. The system is built around several key components that work together to provide comprehensive security analysis.
 
 ```
 ┌─────────────────────────────────┐
 │          Client Layer           │
-│ (Notebook, run_analysis.py)     │
+│        (run_analysis.py)        │
 └────────────────┬────────────────┘
                  │
 ┌────────────────▼────────────────┐
